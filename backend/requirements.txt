@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+pandas
+biopython
+python-multipart
+httpx
