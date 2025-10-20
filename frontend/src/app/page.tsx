@@ -93,15 +93,55 @@ export default function Home() {
 
         <GCPlot results={results} />
 
-        {reportPath ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm">
-            Analysis complete. A CSV report has been generated on the backend at{" "}
-            <span className="font-semibold text-slate-900">{reportPath}</span>. Download it
-            directly from the backend host or inspect it locally if you are running the
-            service on your machine.
-          </div>
-        ) : null}
+        <ReportDownloadCard
+          endpoint={endpoint}
+          reportPath={reportPath}
+          hasResults={results.length > 0}
+        />
       </div>
     </main>
+  );
+}
+
+type ReportDownloadCardProps = {
+  endpoint: URL;
+  reportPath?: string;
+  hasResults: boolean;
+};
+
+function ReportDownloadCard({ endpoint, reportPath, hasResults }: ReportDownloadCardProps) {
+  const downloadUrl = new URL(endpoint.toString());
+  downloadUrl.search = "";
+  downloadUrl.pathname = "/report";
+
+  if (!hasResults) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p>
+            Analysis complete. The backend stored the latest CSV report at{" "}
+            <span className="font-semibold text-slate-900">
+              {reportPath ?? "data/report.csv"}
+            </span>
+            .
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Download the report to review results offline or share with colleagues.
+          </p>
+        </div>
+        <a
+          href={downloadUrl.toString()}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+        >
+          Download Report
+        </a>
+      </div>
+    </section>
   );
 }

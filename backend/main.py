@@ -8,6 +8,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from backend.amr_detection import detect_amr_genes, load_reference
 from backend.report import build_report, save_report
@@ -80,3 +81,15 @@ async def analyze_sequences(
         "report_path": str(save_path),
         "results": report_df.to_dict(orient="records"),
     }
+@app.get("/report")
+def download_report() -> FileResponse:
+    """Serve the most recent report CSV."""
+
+    if not REPORT_CSV.exists():
+        raise HTTPException(status_code=404, detail="Report not found. Run an analysis first.")
+
+    return FileResponse(
+        REPORT_CSV,
+        media_type="text/csv",
+        filename=REPORT_CSV.name,
+    )
