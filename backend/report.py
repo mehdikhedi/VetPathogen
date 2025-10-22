@@ -57,6 +57,9 @@ def build_report(
     columns = [
         "id",
         "sequence",
+        "length",
+        "ambiguous",
+        "qc_flags",
         "gc_content",
         "predicted_species",
         "amr_gene",

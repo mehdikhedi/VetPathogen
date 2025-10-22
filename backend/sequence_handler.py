@@ -30,9 +30,33 @@ def compute_gc_content(sequence: str) -> float:
     return round((gc / len(seq)) * 100, 2)
 
 
-def load_sequences(source: str | Path | TextIO) -> list[dict[str, str | float]]:
+def qc_check_sequence(sequence: str, *, min_length: int = 50, max_ambiguous: int = 5) -> dict[str, object]:
     """
-    Load sequences from FASTA into a list of dicts containing id, sequence, and GC%.
+    Perform basic quality checks on a sequence.
+
+    Returns a dictionary with flags that downstream modules can log or act upon.
+    """
+
+    seq = sequence.upper()
+    length = len(seq)
+    ambiguous = seq.count("N")
+    flags: list[str] = []
+
+    if length < min_length:
+        flags.append("too_short")
+    if ambiguous > max_ambiguous:
+        flags.append("high_ambiguous_content")
+
+    return {
+        "length": length,
+        "ambiguous": ambiguous,
+        "qc_flags": flags,
+    }
+
+
+def load_sequences(source: str | Path | TextIO) -> list[dict[str, object]]:
+    """
+    Load sequences from FASTA into a list of dicts with QC metrics.
 
     Parameters
     ----------
@@ -40,14 +64,16 @@ def load_sequences(source: str | Path | TextIO) -> list[dict[str, str | float]]:
         Path to a FASTA file or a text IO handle containing FASTA content.
     """
 
-    records = []
+    records: list[dict[str, object]] = []
     for record in _open_fasta_source(source):
         sequence = str(record.seq).upper()
+        qc = qc_check_sequence(sequence)
         records.append(
             {
                 "id": record.id,
                 "sequence": sequence,
                 "gc_content": compute_gc_content(sequence),
+                **qc,
             }
         )
     return records
