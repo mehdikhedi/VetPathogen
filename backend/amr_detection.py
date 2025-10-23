@@ -1,4 +1,4 @@
-"""Match sequences against an AMR gene reference catalog."""
+"""Match sequences against an AMR gene reference catalog using alignment metrics."""
 
 from __future__ import annotations
 
@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Iterable
 
 import pandas as pd
+
+from backend.alignment import best_match
 
 
 def load_reference(reference_csv: str | Path) -> pd.DataFrame:
@@ -22,41 +24,27 @@ def load_reference(reference_csv: str | Path) -> pd.DataFrame:
     return df
 
 
-def compute_similarity(sample: str, reference: str) -> float:
-    """Return simple base-to-base similarity percentage."""
-
-    sample_seq = sample.upper()
-    reference_seq = reference.upper()
-    if not sample_seq or not reference_seq:
-        return 0.0
-
-    matches = sum(1 for s, r in zip(sample_seq, reference_seq) if s == r)
-    total = max(len(sample_seq), len(reference_seq))
-    if total == 0:
-        return 0.0
-    return round((matches / total) * 100, 2)
-
-
 def detect_amr_genes(
-    records: Iterable[dict[str, str]], reference_df: pd.DataFrame
-) -> list[dict[str, str | float]]:
-    """Return the closest AMR gene match for each record."""
+    records: Iterable[dict[str, object]],
+    reference_df: pd.DataFrame,
+) -> list[dict[str, object]]:
+    """Return the closest AMR gene match with alignment metrics for each record."""
 
     results = []
+    reference_iterable = reference_df[["gene_name", "sequence"]].itertuples(index=False, name=None)
+    reference_cache = list(reference_iterable)
+
     for record in records:
-        sequence = record["sequence"]
-        best_gene = "N/A"
-        best_similarity = 0.0
-        for _, row in reference_df.iterrows():
-            similarity = compute_similarity(sequence, row["sequence"])
-            if similarity > best_similarity:
-                best_gene = row["gene_name"]
-                best_similarity = similarity
-        results.append(
-            {
-                "id": record["id"],
-                "amr_gene": best_gene,
-                "similarity": best_similarity,
-            }
-        )
+        sequence = str(record["sequence"]).upper()
+        gene_name, metrics = best_match(sequence, reference_cache)
+        result = {
+            "id": record["id"],
+            "amr_gene": gene_name or "N/A",
+            "amr_identity": metrics.identity,
+            "amr_coverage": metrics.coverage,
+            "amr_score": metrics.score,
+        }
+        # Backwards-compatible field for existing UI
+        result["similarity"] = metrics.identity
+        results.append(result)
     return results

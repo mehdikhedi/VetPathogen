@@ -19,10 +19,12 @@ export function ResultsTable({ results }: ResultsTableProps) {
           <thead className="bg-slate-50 text-left font-semibold text-slate-600">
             <tr>
               <th className="px-3 py-2">Sample ID</th>
+              <th className="px-3 py-2">Length (bp)</th>
               <th className="px-3 py-2">GC%</th>
+              <th className="px-3 py-2">Ambiguous</th>
+              <th className="px-3 py-2">QC Flags</th>
               <th className="px-3 py-2">Predicted Species</th>
               <th className="px-3 py-2">AMR Gene</th>
-              <th className="px-3 py-2">Similarity</th>
               <th className="px-3 py-2">Resistance Risk</th>
             </tr>
           </thead>
@@ -30,10 +32,26 @@ export function ResultsTable({ results }: ResultsTableProps) {
             {results.map((result) => (
               <tr key={result.id}>
                 <td className="whitespace-nowrap px-3 py-2 font-medium">{result.id}</td>
+                <td className="whitespace-nowrap px-3 py-2">{result.length}</td>
                 <td className="whitespace-nowrap px-3 py-2">{result.gc_content.toFixed(2)}%</td>
-                <td className="px-3 py-2">{result.predicted_species.replaceAll("_", " ")}</td>
-                <td className="px-3 py-2">{result.amr_gene}</td>
-                <td className="whitespace-nowrap px-3 py-2">{result.similarity.toFixed(2)}%</td>
+                <td className="whitespace-nowrap px-3 py-2">{result.ambiguous}</td>
+                <td className="px-3 py-2 text-xs text-slate-500">
+                  {result.qc_flags.length ? result.qc_flags.join(", ") : "—"}
+                </td>
+                <td className="px-3 py-2">
+                  <div className="font-medium">
+                    {result.predicted_species.replaceAll("_", " ")}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    Identity {result.species_identity.toFixed(2)}% · Coverage {result.species_coverage.toFixed(2)}%
+                  </div>
+                </td>
+                <td className="px-3 py-2">
+                  <div className="font-medium">{result.amr_gene}</div>
+                  <div className="text-xs text-slate-500">
+                    Identity {result.amr_identity.toFixed(2)}% · Coverage {result.amr_coverage.toFixed(2)}%
+                  </div>
+                </td>
                 <td className="whitespace-nowrap px-3 py-2">
                   <span className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-600">
                     {result.resistance_risk}

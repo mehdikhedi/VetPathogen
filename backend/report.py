@@ -46,11 +46,12 @@ def build_report(
     *,
     amr_results: Iterable[dict[str, object]],
     seed: int | None = None,
+    pathogen_reference: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Return a consolidated DataFrame representing the pipeline output."""
 
     base_df = _ensure_dataframe(sequence_records)
-    classified_df = classify_dataframe(base_df)
+    classified_df = classify_dataframe(base_df, reference_df=pathogen_reference)
     with_amr = merge_amr_results(classified_df, amr_results)
     final_df = attach_resistance_risk(with_amr, seed=seed)
     # Reorder columns for readability
@@ -62,7 +63,13 @@ def build_report(
         "qc_flags",
         "gc_content",
         "predicted_species",
+        "species_identity",
+        "species_coverage",
+        "species_score",
         "amr_gene",
+        "amr_identity",
+        "amr_coverage",
+        "amr_score",
         "similarity",
         "resistance_risk",
     ]

@@ -10,12 +10,14 @@ from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from backend.amr_detection import detect_amr_genes, load_reference
+from backend.amr_detection import detect_amr_genes, load_reference as load_amr_reference
+from backend.classify_pathogen import load_reference as load_pathogen_reference
 from backend.report import build_report, save_report
 from backend.sequence_handler import load_sequences_from_string
 
 DATA_DIR = Path("data")
 REFERENCE_CSV = DATA_DIR / "resistance_genes_reference.csv"
+PATHOGEN_REFERENCE_CSV = DATA_DIR / "pathogen_reference.csv"
 REPORT_CSV = DATA_DIR / "report.csv"
 
 app = FastAPI(
@@ -37,8 +39,12 @@ def _load_reference() -> None:
     """Load the AMR reference catalog at startup."""
 
     if not REFERENCE_CSV.exists():
-        raise RuntimeError(f"Reference file missing: {REFERENCE_CSV}")
-    app.state.reference_df = load_reference(REFERENCE_CSV)
+        raise RuntimeError(f"AMR reference file missing: {REFERENCE_CSV}")
+    if not PATHOGEN_REFERENCE_CSV.exists():
+        raise RuntimeError(f"Pathogen reference file missing: {PATHOGEN_REFERENCE_CSV}")
+
+    app.state.amr_reference_df = load_amr_reference(REFERENCE_CSV)
+    app.state.pathogen_reference_df = load_pathogen_reference(PATHOGEN_REFERENCE_CSV)
 
 
 @app.get("/health")
@@ -68,12 +74,18 @@ async def analyze_sequences(
     if not sequences:
         raise HTTPException(status_code=400, detail="No sequences found in FASTA.")
 
-    reference_df = getattr(app.state, "reference_df", None)
-    if reference_df is None:
+    amr_reference_df = getattr(app.state, "amr_reference_df", None)
+    pathogen_reference_df = getattr(app.state, "pathogen_reference_df", None)
+    if amr_reference_df is None or pathogen_reference_df is None:
         raise HTTPException(status_code=500, detail="Reference data not loaded.")
 
-    amr_matches = detect_amr_genes(sequences, reference_df)
-    report_df = build_report(sequences, amr_results=amr_matches, seed=seed)
+    amr_matches = detect_amr_genes(sequences, amr_reference_df)
+    report_df = build_report(
+        sequences,
+        amr_results=amr_matches,
+        seed=seed,
+        pathogen_reference=pathogen_reference_df,
+    )
     save_path = save_report(report_df, REPORT_CSV)
 
     return {
