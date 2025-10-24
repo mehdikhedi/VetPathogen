@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 
@@ -12,6 +12,9 @@ const DEFAULT_ENDPOINT = "http://127.0.0.1:8000/analyze/";
 export default function Home() {
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [reportPath, setReportPath] = useState<string | undefined>();
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const [jobError, setJobError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +31,7 @@ export default function Home() {
   const handleAnalyze = async ({ file, seed }: { file: File; seed?: number }) => {
     setLoading(true);
     setError(null);
+    setJobError(null);
 
     try {
       const formData = new FormData();
@@ -52,6 +56,9 @@ export default function Home() {
       }
 
       const payload = (await response.json()) as AnalysisResponse;
+      setJobId(payload.job_id ?? null);
+      setJobStatus(payload.status ?? null);
+      setJobError(payload.error ?? null);
       setResults(payload.results ?? []);
       setReportPath(payload.report_path);
     } catch (err) {
@@ -59,6 +66,9 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "Unexpected error occurred.");
       setResults([]);
       setReportPath(undefined);
+      setJobId(null);
+      setJobStatus(null);
+      setJobError(null);
     } finally {
       setLoading(false);
     }
@@ -89,6 +99,10 @@ export default function Home() {
           </div>
         ) : null}
 
+        {jobId ? (
+          <JobStatusCard jobId={jobId} status={jobStatus} error={jobError} />
+        ) : null}
+
         <ResultsTable results={results} />
 
         <GCPlot results={results} />
@@ -97,22 +111,47 @@ export default function Home() {
           endpoint={endpoint}
           reportPath={reportPath}
           hasResults={results.length > 0}
+          jobId={jobId}
         />
       </div>
     </main>
   );
 }
 
+type JobStatusCardProps = {
+  jobId: string;
+  status: string | null;
+  error: string | null;
+};
+
+function JobStatusCard({ jobId, status, error }: JobStatusCardProps) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm">
+      <p className="font-medium text-slate-800">Job ID: {jobId}</p>
+      <p className="mt-1 text-xs text-slate-500">Current status: {status ?? "unknown"}</p>
+      {error ? (
+        <p className="mt-2 text-xs text-red-600">{error}</p>
+      ) : status !== "completed" ? (
+        <p className="mt-2 text-xs text-slate-500">
+          Results will appear automatically once processing completes. Refresh this page or
+          check the job status endpoint for updates.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 type ReportDownloadCardProps = {
   endpoint: URL;
+  jobId: string | null;
   reportPath?: string;
   hasResults: boolean;
 };
 
-function ReportDownloadCard({ endpoint, reportPath, hasResults }: ReportDownloadCardProps) {
+function ReportDownloadCard({ endpoint, jobId, reportPath, hasResults }: ReportDownloadCardProps) {
   const downloadUrl = new URL(endpoint.toString());
   downloadUrl.search = "";
-  downloadUrl.pathname = "/report";
+  downloadUrl.pathname = jobId ? `/jobs/${jobId}/report` : "/report";
 
   if (!hasResults) {
     return null;
@@ -123,9 +162,9 @@ function ReportDownloadCard({ endpoint, reportPath, hasResults }: ReportDownload
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p>
-            Analysis complete. The backend stored the latest CSV report at{" "}
+            Analysis complete. The backend stored the latest CSV report at {" "}
             <span className="font-semibold text-slate-900">
-              {reportPath ?? "data/report.csv"}
+              {reportPath ?? (jobId ? `data/report_${jobId}.csv` : "data/report.csv")}
             </span>
             .
           </p>

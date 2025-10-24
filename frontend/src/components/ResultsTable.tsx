@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import { AnalysisResult } from "@/types";
 
@@ -36,20 +36,20 @@ export function ResultsTable({ results }: ResultsTableProps) {
                 <td className="whitespace-nowrap px-3 py-2">{result.gc_content.toFixed(2)}%</td>
                 <td className="whitespace-nowrap px-3 py-2">{result.ambiguous}</td>
                 <td className="px-3 py-2 text-xs text-slate-500">
-                  {result.qc_flags.length ? result.qc_flags.join(", ") : "—"}
+                  {result.qc_flags.length ? result.qc_flags.join(", ") : "â€”"}
                 </td>
                 <td className="px-3 py-2">
                   <div className="font-medium">
                     {result.predicted_species.replaceAll("_", " ")}
                   </div>
                   <div className="text-xs text-slate-500">
-                    Identity {result.species_identity.toFixed(2)}% · Coverage {result.species_coverage.toFixed(2)}%
+                    Identity {result.species_identity.toFixed(2)}% Â· Coverage {result.species_coverage.toFixed(2)}%
                   </div>
                 </td>
                 <td className="px-3 py-2">
                   <div className="font-medium">{result.amr_gene}</div>
                   <div className="text-xs text-slate-500">
-                    Identity {result.amr_identity.toFixed(2)}% · Coverage {result.amr_coverage.toFixed(2)}%
+                    Identity {result.amr_identity.toFixed(2)}% Â· Coverage {result.amr_coverage.toFixed(2)}%
                   </div>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2">

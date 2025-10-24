@@ -4,3 +4,4 @@ pandas
 biopython
 python-multipart
 httpx
+sqlalchemy

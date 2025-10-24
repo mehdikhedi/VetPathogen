@@ -16,8 +16,8 @@ class AlignmentResult:
     alignment_length: int
 
 
-def _compute_identity(alignment) -> tuple[float, int]:
-    seq_a, seq_b, score, _, _ = alignment
+def _compute_identity(alignment_tuple) -> tuple[float, int]:
+    seq_a, seq_b, score, _, _ = alignment_tuple
     matches = sum(1 for a, b in zip(seq_a, seq_b) if a == b and a != "-" and b != "-")
     alignment_length = max(len(seq_a.replace("-", "")), len(seq_b.replace("-", "")))
     if alignment_length == 0:
@@ -26,13 +26,37 @@ def _compute_identity(alignment) -> tuple[float, int]:
     return identity, alignment_length
 
 
-def align_sequences(seq_a: str, seq_b: str) -> AlignmentResult:
-    """
-    Align two sequences and derive simple alignment metrics.
+def _build_aligned_strings(alignment, seq_a: str, seq_b: str) -> tuple[str, str]:
+    coords_a = alignment.aligned[0]
+    coords_b = alignment.aligned[1]
+    pieces_a: list[str] = []
+    pieces_b: list[str] = []
+    pos_a = 0
+    pos_b = 0
+    for (start_a, end_a), (start_b, end_b) in zip(coords_a, coords_b):
+        if start_a > pos_a:
+            pieces_a.append(seq_a[pos_a:start_a])
+            pieces_b.append("-" * (start_a - pos_a))
+        if start_b > pos_b:
+            pieces_b.append(seq_b[pos_b:start_b])
+            pieces_a.append("-" * (start_b - pos_b))
+        pieces_a.append(seq_a[start_a:end_a])
+        pieces_b.append(seq_b[start_b:end_b])
+        pos_a = end_a
+        pos_b = end_b
+    if pos_a < len(seq_a):
+        pieces_a.append(seq_a[pos_a:])
+        pieces_b.append("-" * (len(seq_a) - pos_a))
+    if pos_b < len(seq_b):
+        pieces_b.append(seq_b[pos_b:])
+        pieces_a.append("-" * (len(seq_b) - pos_b))
+    aligned_a = "".join(pieces_a)
+    aligned_b = "".join(pieces_b)
+    return aligned_a, aligned_b
 
-    Uses Biopython's globalxx (match=1, mismatch=0) as a lightweight stand-in. In production,
-    replace this with BLAST/MMseqs2 wrappers and populate the same metrics.
-    """
+
+def align_sequences(seq_a: str, seq_b: str) -> AlignmentResult:
+    """Align two sequences and derive simple alignment metrics."""
 
     if not seq_a or not seq_b:
         return AlignmentResult(score=0.0, identity=0.0, coverage=0.0, alignment_length=0)
@@ -44,34 +68,9 @@ def align_sequences(seq_a: str, seq_b: str) -> AlignmentResult:
     aligner.open_gap_score = -1
     aligner.extend_gap_score = -0.5
 
-    alignments = aligner.align(seq_a.upper(), seq_b.upper())
-    alignment = alignments[0]
-    # Convert to strings similar to pairwise2 output
-    seq_a_aligned = alignment.aligned[0]
-    seq_b_aligned = alignment.aligned[1]
-    # Build strings for identity computation
-    a_str = []
-    b_str = []
-    idx_a = 0
-    idx_b = 0
-    for (start_a, end_a), (start_b, end_b) in zip(seq_a_aligned, seq_b_aligned):
-        # Add gaps if needed
-        if start_a > idx_a:
-            a_str.append(seq_a[idx_a:start_a])
-            b_str.append("-" * (start_a - idx_a))
-        if start_b > idx_b:
-            b_str.append(seq_b[idx_b:start_b])
-            a_str.append("-" * (start_b - idx_b))
-        a_str.append(seq_a[start_a:end_a])
-        b_str.append(seq_b[start_b:end_b])
-        idx_a = end_a
-        idx_b = end_b
-    a_str.append(seq_a[idx_a:])
-    b_str.append("-" * (len(seq_a) - idx_a))
-    b_str.append(seq_b[idx_b:])
-    a_full = "".join(a_str)
-    b_full = "".join(b_str)
-    identity, alignment_length = _compute_identity((a_full, b_full, alignment.score, None, None))
+    alignment = aligner.align(seq_a.upper(), seq_b.upper())[0]
+    aligned_a, aligned_b = _build_aligned_strings(alignment, seq_a.upper(), seq_b.upper())
+    identity, alignment_length = _compute_identity((aligned_a, aligned_b, alignment.score, None, None))
     score = alignment.score
 
     coverage = 0.0
@@ -87,12 +86,6 @@ def align_sequences(seq_a: str, seq_b: str) -> AlignmentResult:
 
 
 def best_match(sequence: str, reference_records: Iterable[tuple[str, str]]) -> tuple[str, AlignmentResult]:
-    """
-    Return the reference entry with the highest identity to the sequence.
-
-    reference_records should yield (label, sequence) pairs.
-    """
-
     best_label = ""
     best_alignment = AlignmentResult(score=0.0, identity=0.0, coverage=0.0, alignment_length=0)
     for label, ref_sequence in reference_records:

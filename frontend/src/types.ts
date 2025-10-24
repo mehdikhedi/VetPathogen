@@ -1,4 +1,4 @@
-export type AnalysisResult = {
+﻿export type AnalysisResult = {
   id: string;
   sequence: string;
   length: number;
@@ -18,7 +18,10 @@ export type AnalysisResult = {
 };
 
 export type AnalysisResponse = {
-  count: number;
+  job_id?: string;
+  status?: string;
+  error?: string;
+  count?: number;
   report_path?: string;
-  results: AnalysisResult[];
+  results?: AnalysisResult[];
 };
