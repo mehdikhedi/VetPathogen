@@ -1,4 +1,4 @@
-"""Database utilities for VetPathogen."""
+﻿"""Database utilities for VetPathogen."""
 
 from __future__ import annotations
 
@@ -26,7 +26,11 @@ class AnalysisJob(Base):
     id = Column(String(64), primary_key=True, default=lambda: str(uuid4()))
     status = Column(String(32), nullable=False, default="pending")
     seed = Column(String(32), nullable=True)
+    pipeline_version = Column(String(50), nullable=True)
+    reference_metadata = Column(Text, nullable=True)
     report_path = Column(String(255), nullable=True)
+    summary_path = Column(String(255), nullable=True)
+    pdf_path = Column(String(255), nullable=True)
     results_json = Column(Text, nullable=True)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -37,7 +41,11 @@ class AnalysisJob(Base):
             "id": self.id,
             "status": self.status,
             "seed": self.seed,
+            "pipeline_version": self.pipeline_version,
+            "reference_metadata": json.loads(self.reference_metadata) if self.reference_metadata else None,
             "report_path": self.report_path,
+            "summary_path": self.summary_path,
+            "pdf_path": self.pdf_path,
             "results": json.loads(self.results_json) if self.results_json else None,
             "error": self.error_message,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -82,14 +90,22 @@ def mark_job_completed(
     session: Session,
     job_id: str,
     *,
+    pipeline_version: str,
+    reference_metadata: dict[str, object],
     report_path: str,
+    summary_path: str | None,
+    pdf_path: str | None,
     results: Iterable[dict[str, object]],
 ) -> AnalysisJob | None:
     job = session.get(AnalysisJob, job_id)
     if job is None:
         return None
     job.status = "completed"
+    job.pipeline_version = pipeline_version
+    job.reference_metadata = json.dumps(reference_metadata)
     job.report_path = report_path
+    job.summary_path = summary_path
+    job.pdf_path = pdf_path
     job.results_json = json.dumps(list(results))
     job.error_message = None
     job.updated_at = datetime.utcnow()

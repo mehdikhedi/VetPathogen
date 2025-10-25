@@ -1,8 +1,7 @@
-"""FastAPI entry point for the VetPathogen backend service."""
+﻿"""FastAPI entry point for the VetPathogen backend service."""
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Annotated
 
@@ -88,7 +87,11 @@ async def analyze_sequences(
     response: dict[str, object] = {
         "job_id": job_id,
         "status": job_info.get("status", "unknown"),
+        "pipeline_version": job_info.get("pipeline_version"),
         "report_path": job_info.get("report_path"),
+        "summary_path": job_info.get("summary_path"),
+        "pdf_path": job_info.get("pdf_path"),
+        "metadata": job_info.get("reference_metadata"),
         "results": job_info.get("results") or [],
         "count": len(job_info.get("results") or []),
     }
@@ -99,12 +102,27 @@ async def analyze_sequences(
             response["count"] = len(payload["results"])  # type: ignore[arg-type]
         if payload.get("report_path"):
             response["report_path"] = payload["report_path"]
+        if payload.get("summary_path"):
+            response["summary_path"] = payload["summary_path"]
+        if payload.get("pdf_path"):
+            response["pdf_path"] = payload["pdf_path"]
+        if payload.get("metadata"):
+            response["metadata"] = payload["metadata"]
+            response["pipeline_version"] = payload["metadata"].get("pipeline_version")
         if payload.get("error"):
             response["error"] = payload["error"]
             response["status"] = payload.get("status", response["status"])
 
     if job_info.get("error"):
         response["error"] = job_info["error"]
+
+    # Normalise download paths to API endpoints for the client
+    if job_id:
+        response["report_path"] = f"/jobs/{job_id}/report"
+        if job_info.get("summary_path") or payload and payload.get("summary_path"):
+            response["summary_path"] = f"/jobs/{job_id}/summary"
+        if job_info.get("pdf_path") or payload and payload.get("pdf_path"):
+            response["pdf_path"] = f"/jobs/{job_id}/pdf"
 
     return response
 
@@ -143,6 +161,36 @@ def download_job_report(job_id: str) -> FileResponse:
         raise HTTPException(status_code=404, detail="Report file missing on disk.")
 
     return FileResponse(report_path, media_type="text/csv", filename=report_path.name)
+
+
+@app.get("/jobs/{job_id}/summary")
+def download_job_summary(job_id: str) -> FileResponse:
+    job_runner = getattr(app.state, "job_runner", None)
+    if job_runner is None:
+        raise HTTPException(status_code=500, detail="Job runner not initialised.")
+    job = job_runner.get_job(job_id)
+    summary_path = job.get("summary_path") if job else None
+    if summary_path is None:
+        raise HTTPException(status_code=404, detail="Summary not available for this job.")
+    path = Path(str(summary_path))
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Summary file missing on disk.")
+    return FileResponse(path, media_type="text/csv", filename=path.name)
+
+
+@app.get("/jobs/{job_id}/pdf")
+def download_job_pdf(job_id: str) -> FileResponse:
+    job_runner = getattr(app.state, "job_runner", None)
+    if job_runner is None:
+        raise HTTPException(status_code=500, detail="Job runner not initialised.")
+    job = job_runner.get_job(job_id)
+    pdf_path = job.get("pdf_path") if job else None
+    if pdf_path is None:
+        raise HTTPException(status_code=404, detail="PDF report not available for this job.")
+    path = Path(str(pdf_path))
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="PDF file missing on disk.")
+    return FileResponse(path, media_type="application/pdf", filename=path.name)
 
 
 @app.get("/report")

@@ -1,4 +1,4 @@
-# Real Dataset Preparation
+ï»¿# Real Dataset Preparation
 
 This folder documents how to obtain larger, realistic datasets for VetPathogen without bloating the repository. All files listed below should be downloaded manually (or via the provided scripts) and stored locally under `data/real_datasets/`. The default demo still uses the small sample files in `data/`, so the app remains runnable out of the box.
 
@@ -6,60 +6,48 @@ This folder documents how to obtain larger, realistic datasets for VetPathogen w
 
 - **NCBI GenBank / RefSeq**  
   Use the NCBI Datasets CLI or `esearch`/`efetch` to download FASTA genomes by species.
-  - Example: *Staphylococcus aureus*, *Escherichia coli*, *Pseudomonas aeruginosa*.
-  - Command (Linux/macOS):  
-    ```bash
-    datasets download genome taxon "Staphylococcus aureus" --reference --filename saureus.zip
-    unzip saureus.zip -d data/real_datasets/staph_aureus
-    ```
-
 - **ENA (European Nucleotide Archive)**  
   For paired FASTQ reads, use ENA FTP links or `enaBrowserTools`.
 
 ## AMR Gene References
 
-- **CARD (Comprehensive Antibiotic Resistance Database)** – curated protein/nucleotide sequences and JSON metadata.  
-  - https://card.mcmaster.ca/download
-- **ResFinder database** (Center for Genomic Epidemiology) – FASTA of known resistance genes.  
-  - https://cge.food.dtu.dk/services/ResFinder/
+- **CARD** â€“ curated protein/nucleotide sequences and JSON metadata.  
+- **ResFinder** â€“ FASTA files of known resistance determinants.
 
 ## Metadata Normalization
 
-Create or download a TSV/CSV that records:
+Record key attributes (isolate_id, species, host, specimen, collection_date, location, source_url) in a CSV/TSV. Scripts in `tools/` (to be added) will validate and combine them with sequence data.
 
-| isolate_id | species | host | specimen | collection_date | location | source_url |
-|------------|---------|------|----------|-----------------|----------|------------|
+## QC & Reporting Artefacts
 
-Scripts in `tools/` (to be added) will ingest these metadata files and validate fields before combining with sequence data.
-
-### QC Integration
-
-- Sequences shorter than 50 bp or with >5 ambiguous bases (`N`) are flagged during ingestion.
-- Additional scripts (to be added under `tools/`) will trim low-quality tails and screen common contaminants. Results are stored alongside sequences for transparency.
+- Sequences shorter than 50 bp or with >5 ambiguous bases (`N`) are flagged (`qc_flags`).
+- Alignment metrics (`species_identity`, `amr_identity`, etc.) appear in API responses and reports.
+- Each analysis job produces:
+  - Detailed CSV (`report_<job>.csv`)
+  - Summary CSV (`summary_<job>.csv`) with species/AMR counts
+  - PDF overview (`report_<job>.pdf`) containing metadata (pipeline version, reference catalog sizes)
 
 ---
 
 # Preparation des jeux de donnees reels
 
-Ce dossier explique comment obtenir des jeux de donnees realistes sans alourdir le depot. Tous les fichiers listes doivent etre telecharges manuellement (ou via les scripts fournis) et stockes localement dans `data/real_datasets/`. La demo par defaut s'appuie toujours sur les petits fichiers d'exemple dans `data/`, donc l'application reste exploitable immediatement.
+Ce dossier explique comment obtenir des jeux de donnees realistes sans alourdir le depot. Telecharger les fichiers et les placer dans `data/real_datasets/` tout en conservant les petits fichiers de demonstration dans `data/`.
 
 ## Sequences pathogenes
 
-- **NCBI GenBank / RefSeq**  
-  Utiliser NCBI Datasets CLI ou `esearch`/`efetch` pour recuperer les genomes par espece.
-- **ENA (European Nucleotide Archive)**  
-  Pour des lectures FASTQ appariees, utiliser les liens FTP d'ENA ou `enaBrowserTools`.
+- **NCBI GenBank / RefSeq** (CLI Datasets, `esearch`/`efetch`)
+- **ENA** pour les lectures FASTQ appariees.
 
 ## References AMR
 
-- **CARD** – sequences proteine/nucleotide et metadonnees JSON.  
-- **Base ResFinder** – FASTA de genes de resistance connus.
+- **CARD** et **ResFinder** fournissent des sequences et metadonnees fiables.
 
 ## Normalisation des metadonnees
 
-Reunir les champs essentiels (isolate_id, species, host, specimen, date, localisation, source) dans un CSV ou TSV.
+Rassembler les champs essentiels (isolate_id, species, host, specimen, date, localisation, source) dans un CSV/TSV. Les scripts de `tools/` assureront la validation.
 
-## Integration QC
+## Artefacts de controle et de rapport
 
-- Sequences < 50 pb ou avec >5 bases ambigu es (`N`) sont signalees lors de l'import.
-- Des scripts supplementaires (a ajouter dans `tools/`) gereront trimming et controle de contamination.
+- Les sequences < 50 pb ou tres ambigues sont signalees (`qc_flags`).
+- Les metriques d'alignement (`species_identity`, `amr_identity`, etc.) sont exposees dans les rapports.
+- Chaque analyse genere : un CSV detaille, un CSV de synthese et un rapport PDF avec metadonnees (version du pipeline, taille des catalogues).

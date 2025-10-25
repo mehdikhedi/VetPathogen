@@ -5,13 +5,16 @@ import { useMemo, useState } from "react";
 import { GCPlot } from "@/components/GCPlot";
 import { ResultsTable } from "@/components/ResultsTable";
 import { UploadSection } from "@/components/UploadSection";
-import type { AnalysisResponse, AnalysisResult } from "@/types";
+import type { AnalysisResponse, AnalysisResult, AnalysisMetadata } from "@/types";
 
 const DEFAULT_ENDPOINT = "http://127.0.0.1:8000/analyze/";
 
 export default function Home() {
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [reportPath, setReportPath] = useState<string | undefined>();
+  const [summaryPath, setSummaryPath] = useState<string | undefined>();
+  const [pdfPath, setPdfPath] = useState<string | undefined>();
+  const [metadata, setMetadata] = useState<AnalysisMetadata | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<string | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
@@ -61,11 +64,17 @@ export default function Home() {
       setJobError(payload.error ?? null);
       setResults(payload.results ?? []);
       setReportPath(payload.report_path);
+      setSummaryPath(payload.summary_path);
+      setPdfPath(payload.pdf_path);
+      setMetadata(payload.metadata ?? null);
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Unexpected error occurred.");
       setResults([]);
       setReportPath(undefined);
+      setSummaryPath(undefined);
+      setPdfPath(undefined);
+      setMetadata(null);
       setJobId(null);
       setJobStatus(null);
       setJobError(null);
@@ -100,7 +109,12 @@ export default function Home() {
         ) : null}
 
         {jobId ? (
-          <JobStatusCard jobId={jobId} status={jobStatus} error={jobError} />
+          <JobStatusCard
+            jobId={jobId}
+            status={jobStatus}
+            error={jobError}
+            metadata={metadata}
+          />
         ) : null}
 
         <ResultsTable results={results} />
@@ -110,6 +124,8 @@ export default function Home() {
         <ReportDownloadCard
           endpoint={endpoint}
           reportPath={reportPath}
+          summaryPath={summaryPath}
+          pdfPath={pdfPath}
           hasResults={results.length > 0}
           jobId={jobId}
         />
@@ -122,13 +138,19 @@ type JobStatusCardProps = {
   jobId: string;
   status: string | null;
   error: string | null;
+  metadata: AnalysisMetadata | null;
 };
 
-function JobStatusCard({ jobId, status, error }: JobStatusCardProps) {
+function JobStatusCard({ jobId, status, error, metadata }: JobStatusCardProps) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm">
       <p className="font-medium text-slate-800">Job ID: {jobId}</p>
       <p className="mt-1 text-xs text-slate-500">Current status: {status ?? "unknown"}</p>
+      {metadata?.pipeline_version ? (
+        <p className="mt-1 text-xs text-slate-500">
+          Pipeline version: {metadata.pipeline_version}
+        </p>
+      ) : null}
       {error ? (
         <p className="mt-2 text-xs text-red-600">{error}</p>
       ) : status !== "completed" ? (
@@ -145,21 +167,40 @@ type ReportDownloadCardProps = {
   endpoint: URL;
   jobId: string | null;
   reportPath?: string;
+  summaryPath?: string;
+  pdfPath?: string;
   hasResults: boolean;
 };
 
-function ReportDownloadCard({ endpoint, jobId, reportPath, hasResults }: ReportDownloadCardProps) {
-  const downloadUrl = new URL(endpoint.toString());
-  downloadUrl.search = "";
-  downloadUrl.pathname = jobId ? `/jobs/${jobId}/report` : "/report";
-
+function ReportDownloadCard({
+  endpoint,
+  jobId,
+  reportPath,
+  summaryPath,
+  pdfPath,
+  hasResults,
+}: ReportDownloadCardProps) {
   if (!hasResults) {
     return null;
   }
 
+  const baseOrigin = endpoint.origin;
+  const buildUrl = (path?: string) => {
+    if (!path) return undefined;
+    try {
+      return new URL(path, baseOrigin).toString();
+    } catch {
+      return path;
+    }
+  };
+
+  const csvUrl = buildUrl(reportPath ?? (jobId ? `/jobs/${jobId}/report` : "/report"));
+  const summaryUrl = buildUrl(summaryPath ?? (jobId ? `/jobs/${jobId}/summary` : undefined));
+  const pdfUrl = buildUrl(pdfPath ?? (jobId ? `/jobs/${jobId}/pdf` : undefined));
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3">
         <div>
           <p>
             Analysis complete. The backend stored the latest CSV report at {" "}
@@ -169,17 +210,41 @@ function ReportDownloadCard({ endpoint, jobId, reportPath, hasResults }: ReportD
             .
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            Download the report to review results offline or share with colleagues.
+            Download the artefacts to review results offline or share with colleagues.
           </p>
         </div>
-        <a
-          href={downloadUrl.toString()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
-        >
-          Download Report
-        </a>
+        <div className="flex flex-wrap gap-3">
+          {csvUrl ? (
+            <a
+              href={csvUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+            >
+              Download CSV
+            </a>
+          ) : null}
+          {summaryUrl ? (
+            <a
+              href={summaryUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-md border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+            >
+              Summary CSV
+            </a>
+          ) : null}
+          {pdfUrl ? (
+            <a
+              href={pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-md border border-indigo-200 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50"
+            >
+              PDF Report
+            </a>
+          ) : null}
+        </div>
       </div>
     </section>
   );

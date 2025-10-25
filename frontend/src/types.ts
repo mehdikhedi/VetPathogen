@@ -17,11 +17,21 @@
   resistance_risk: string;
 };
 
+export type AnalysisMetadata = {
+  pipeline_version?: string;
+  generated_at?: string;
+  references?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
 export type AnalysisResponse = {
   job_id?: string;
   status?: string;
   error?: string;
   count?: number;
   report_path?: string;
+  summary_path?: string;
+  pdf_path?: string;
+  metadata?: AnalysisMetadata;
   results?: AnalysisResult[];
 };

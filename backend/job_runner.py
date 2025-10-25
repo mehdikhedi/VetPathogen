@@ -1,4 +1,4 @@
-"""Background job runner for VetPathogen."""
+﻿"""Background job runner for VetPathogen."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from backend.database import (
     mark_job_running,
 )
 from backend.pipeline import run_pipeline
+from backend.report_builder import PIPELINE_VERSION
 
 
 class JobRunner:
@@ -69,7 +70,13 @@ class JobRunner:
             mark_job_running(session, job_id)
 
         try:
-            report_df, report_path = run_pipeline(
+            (
+                report_df,
+                report_path,
+                summary_path,
+                pdf_path,
+                metadata,
+            ) = run_pipeline(
                 fasta_text,
                 seed=seed,
                 amr_reference_df=self.amr_reference_df,
@@ -82,13 +89,20 @@ class JobRunner:
                 mark_job_completed(
                     session,
                     job_id,
+                    pipeline_version=PIPELINE_VERSION,
+                    reference_metadata=metadata,
                     report_path=str(report_path),
+                    summary_path=str(summary_path) if summary_path else None,
+                    pdf_path=str(pdf_path) if pdf_path else None,
                     results=results,
                 )
             return {
                 "status": "completed",
                 "results": results,
                 "report_path": str(report_path),
+                "summary_path": str(summary_path) if summary_path else None,
+                "pdf_path": str(pdf_path) if pdf_path else None,
+                "metadata": metadata,
             }
         except Exception as exc:  # broad catch to persist failure
             message = str(exc)
