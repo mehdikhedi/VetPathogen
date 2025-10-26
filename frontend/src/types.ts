@@ -21,6 +21,8 @@ export type AnalysisMetadata = {
   pipeline_version?: string;
   generated_at?: string;
   references?: Record<string, unknown>;
+  notes?: string;
+  sample_id?: string;
   [key: string]: unknown;
 };
 
@@ -34,4 +36,18 @@ export type AnalysisResponse = {
   pdf_path?: string;
   metadata?: AnalysisMetadata;
   results?: AnalysisResult[];
+};
+
+export type AnalysisJob = {
+  id: string;
+  status: string;
+  seed?: string | null;
+  pipeline_version?: string | null;
+  report_path?: string | null;
+  summary_path?: string | null;
+  pdf_path?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  error?: string | null;
+  reference_metadata?: AnalysisMetadata | null;
 };

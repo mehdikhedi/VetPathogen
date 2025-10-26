@@ -1,13 +1,19 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 
 import { GCPlot } from "@/components/GCPlot";
 import { ResultsTable } from "@/components/ResultsTable";
 import { UploadSection } from "@/components/UploadSection";
-import type { AnalysisResponse, AnalysisResult, AnalysisMetadata } from "@/types";
+import { JobHistory } from "@/components/JobHistory";
+import type {
+  AnalysisMetadata,
+  AnalysisResponse,
+  AnalysisResult,
+  AnalysisJob,
+} from "@/types";
 
-const DEFAULT_ENDPOINT = "http://127.0.0.1:8000/analyze/";
+const DEFAULT_ENDPOINT = "http://127.0.0.1:8000";
 
 export default function Home() {
   const [results, setResults] = useState<AnalysisResult[]>([]);
@@ -18,20 +24,71 @@ export default function Home() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<string | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<AnalysisJob[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const endpoint = useMemo(() => {
-    const base = process.env.NEXT_PUBLIC_BACKEND_URL ?? DEFAULT_ENDPOINT;
+  const baseUrl = useMemo(() => {
+    const raw = process.env.NEXT_PUBLIC_BACKEND_URL ?? DEFAULT_ENDPOINT;
     try {
-      return new URL(base);
+      return new URL(raw).origin;
     } catch (err) {
       console.warn("Invalid NEXT_PUBLIC_BACKEND_URL, falling back to default.", err);
-      return new URL(DEFAULT_ENDPOINT);
+      return new URL(DEFAULT_ENDPOINT).origin;
     }
   }, []);
 
-  const handleAnalyze = async ({ file, seed }: { file: File; seed?: number }) => {
+  const apiUrl = useCallback((path: string) => `${baseUrl}${path}`, [baseUrl]);
+
+  const fetchJobs = useCallback(async () => {
+    try {
+      const res = await fetch(apiUrl("/jobs"));
+      if (!res.ok) return;
+      const data = await res.json();
+      setJobs((data.items as AnalysisJob[]) ?? []);
+    } catch (err) {
+      console.error("Failed to fetch jobs", err);
+    }
+  }, [apiUrl]);
+
+  const loadJob = useCallback(
+    async (id: string) => {
+      try {
+        const res = await fetch(apiUrl(`/jobs/${id}`));
+        if (!res.ok) throw new Error(await res.text());
+        const job = (await res.json()) as AnalysisJob;
+        setJobId(job.id);
+        setJobStatus(job.status);
+        setJobError(job.error ?? null);
+        const results = (job.results as AnalysisResult[] | undefined) ?? [];
+        setResults(results);
+        setReportPath(job.report_path ?? undefined);
+        setSummaryPath(job.summary_path ?? undefined);
+        setPdfPath(job.pdf_path ?? undefined);
+        setMetadata(job.reference_metadata ?? null);
+      } catch (err) {
+        console.error("Failed to load job", err);
+        setError("Unable to load selected job");
+      }
+    },
+    [apiUrl]
+  );
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
+
+  const handleAnalyze = async ({
+    file,
+    seed,
+    sampleId,
+    notes,
+  }: {
+    file: File;
+    seed?: number;
+    sampleId?: string;
+    notes?: string;
+  }) => {
     setLoading(true);
     setError(null);
     setJobError(null);
@@ -39,13 +96,17 @@ export default function Home() {
     try {
       const formData = new FormData();
       formData.append("fasta", file);
-
-      const target = new URL(endpoint.toString());
       if (seed !== undefined) {
-        target.searchParams.set("seed", String(seed));
+        formData.append("seed", String(seed));
+      }
+      if (sampleId) {
+        formData.append("sample_id", sampleId);
+      }
+      if (notes) {
+        formData.append("notes", notes);
       }
 
-      const response = await fetch(target.toString(), {
+      const response = await fetch(apiUrl("/analyze/"), {
         method: "POST",
         body: formData,
       });
@@ -62,11 +123,18 @@ export default function Home() {
       setJobId(payload.job_id ?? null);
       setJobStatus(payload.status ?? null);
       setJobError(payload.error ?? null);
+      const meta: AnalysisMetadata = {
+        ...(payload.metadata ?? {}),
+        notes,
+        sample_id: sampleId,
+      };
+      setMetadata(meta);
       setResults(payload.results ?? []);
       setReportPath(payload.report_path);
       setSummaryPath(payload.summary_path);
       setPdfPath(payload.pdf_path);
-      setMetadata(payload.metadata ?? null);
+
+      fetchJobs();
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Unexpected error occurred.");
@@ -83,9 +151,19 @@ export default function Home() {
     }
   };
 
+  const csvUrl = reportPath
+    ? apiUrl(reportPath.startsWith("/") ? reportPath : `/jobs/${jobId}/report`)
+    : undefined;
+  const summaryUrl = summaryPath
+    ? apiUrl(summaryPath.startsWith("/") ? summaryPath : `/jobs/${jobId}/summary`)
+    : undefined;
+  const pdfUrl = pdfPath
+    ? apiUrl(pdfPath.startsWith("/") ? pdfPath : `/jobs/${jobId}/pdf`)
+    : undefined;
+
   return (
     <main className="min-h-screen bg-slate-100">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10">
         <header className="space-y-2">
           <p className="text-sm font-semibold uppercase tracking-wide text-indigo-600">
             VetPathogen
@@ -100,39 +178,52 @@ export default function Home() {
           </p>
         </header>
 
-        <UploadSection loading={loading} onSubmit={handleAnalyze} />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-6">
+            <UploadSection loading={loading} onSubmit={handleAnalyze} />
 
-        {error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
+            {error ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {error}
+              </div>
+            ) : null}
+
+            {jobId ? (
+              <JobStatusCard
+                jobId={jobId}
+                status={jobStatus}
+                error={jobError}
+                metadata={metadata}
+              />
+            ) : null}
+
+            <ResultsTable results={results} />
+
+            <GCPlot results={results} />
+
+            <ReportDownloadCard
+              csvUrl={csvUrl}
+              summaryUrl={summaryUrl}
+              pdfUrl={pdfUrl}
+              hasResults={results.length > 0}
+            />
           </div>
-        ) : null}
 
-        {jobId ? (
-          <JobStatusCard
-            jobId={jobId}
-            status={jobStatus}
-            error={jobError}
-            metadata={metadata}
-          />
-        ) : null}
-
-        <ResultsTable results={results} />
-
-        <GCPlot results={results} />
-
-        <ReportDownloadCard
-          endpoint={endpoint}
-          reportPath={reportPath}
-          summaryPath={summaryPath}
-          pdfPath={pdfPath}
-          hasResults={results.length > 0}
-          jobId={jobId}
-        />
+          <div className="space-y-6">
+            <JobHistory
+              jobs={jobs}
+              onRefresh={fetchJobs}
+              onSelect={loadJob}
+              activeJobId={jobId}
+            />
+          </div>
+        </div>
       </div>
     </main>
   );
 }
+
+// JobStatusCard and ReportDownloadCard remain unchanged from previous version
 
 type JobStatusCardProps = {
   jobId: string;
@@ -151,6 +242,12 @@ function JobStatusCard({ jobId, status, error, metadata }: JobStatusCardProps) {
           Pipeline version: {metadata.pipeline_version}
         </p>
       ) : null}
+      {metadata?.sample_id ? (
+        <p className="mt-1 text-xs text-slate-500">Sample: {metadata.sample_id}</p>
+      ) : null}
+      {metadata?.notes ? (
+        <p className="mt-1 text-xs text-slate-500">Notes: {metadata.notes}</p>
+      ) : null}
       {error ? (
         <p className="mt-2 text-xs text-red-600">{error}</p>
       ) : status !== "completed" ? (
@@ -164,53 +261,24 @@ function JobStatusCard({ jobId, status, error, metadata }: JobStatusCardProps) {
 }
 
 type ReportDownloadCardProps = {
-  endpoint: URL;
-  jobId: string | null;
-  reportPath?: string;
-  summaryPath?: string;
-  pdfPath?: string;
+  csvUrl?: string;
+  summaryUrl?: string;
+  pdfUrl?: string;
   hasResults: boolean;
 };
 
-function ReportDownloadCard({
-  endpoint,
-  jobId,
-  reportPath,
-  summaryPath,
-  pdfPath,
-  hasResults,
-}: ReportDownloadCardProps) {
+function ReportDownloadCard({ csvUrl, summaryUrl, pdfUrl, hasResults }: ReportDownloadCardProps) {
   if (!hasResults) {
     return null;
   }
-
-  const baseOrigin = endpoint.origin;
-  const buildUrl = (path?: string) => {
-    if (!path) return undefined;
-    try {
-      return new URL(path, baseOrigin).toString();
-    } catch {
-      return path;
-    }
-  };
-
-  const csvUrl = buildUrl(reportPath ?? (jobId ? `/jobs/${jobId}/report` : "/report"));
-  const summaryUrl = buildUrl(summaryPath ?? (jobId ? `/jobs/${jobId}/summary` : undefined));
-  const pdfUrl = buildUrl(pdfPath ?? (jobId ? `/jobs/${jobId}/pdf` : undefined));
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm">
       <div className="flex flex-col gap-3">
         <div>
-          <p>
-            Analysis complete. The backend stored the latest CSV report at {" "}
-            <span className="font-semibold text-slate-900">
-              {reportPath ?? (jobId ? `data/report_${jobId}.csv` : "data/report.csv")}
-            </span>
-            .
-          </p>
+          <p className="font-medium text-slate-800">Analysis Artefacts</p>
           <p className="mt-1 text-xs text-slate-500">
-            Download the artefacts to review results offline or share with colleagues.
+            Download detailed CSV, summary counts, and a PDF overview generated for this job.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
