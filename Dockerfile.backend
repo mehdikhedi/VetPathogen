@@ -1,0 +1,37 @@
+﻿# VetPathogen backend Docker image
+# Usage:
+#   docker build -f Dockerfile.backend -t vetpathogen-backend .
+#   docker run -p 8000:8000 vetpathogen-backend
+
+FROM python:3.11-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100 \
+    POETRY_VERSION=1.7.1
+
+WORKDIR /app
+
+# System deps
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential libssl-dev libffi-dev curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY backend/requirements.txt /app/backend/requirements.txt
+
+# Install dependencies
+RUN pip install --upgrade pip && \
+    pip install -r /app/backend/requirements.txt
+
+# Copy application code
+COPY backend /app/backend
+COPY data /app/data
+
+# Expose port
+EXPOSE 8000
+
+# Default command
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
