@@ -77,7 +77,7 @@ jobs:
       - name: Build frontend image
         uses: docker/build-push-action@v6
         with:
-          context: frontend
-          file: Dockerfile.frontend
+          context: .
+          file: frontend/Dockerfile.frontend
           push: false
           tags: vetpathogen/frontend:ci
