@@ -2,157 +2,277 @@
 
 <details open>
   <summary>🇬🇧 English</summary>
-An integrated prototype that stitches together sequence parsing, pathogen classification, AMR
-detection, and reporting into a single experience. The current release combines the previous
-sub-projects (Sequence Analysis Demo, AMR Gene Detection, VetPathogen Pipeline) with a FastAPI
-backend and a Next.js + Tailwind frontend.
+
+A platform that automates veterinary pathogen classification and antimicrobial resistance (AMR) detection from FASTA inputs. This release showcases a complete demo stack of FastAPI backend, modular analysis pipeline, and a Next.js dashboard with a clear roadmap toward a research-grade system.
 
 ---
 
-## Current Capabilities
+## Highlights
 
-- **Backend (FastAPI + Pandas + Biopython)**
-  - `POST /analyze/` accepts FASTA uploads, computes GC%, predicts species, finds closest AMR
-    genes, assigns random resistance risk, persists `data/report.csv`, and returns JSON.
-  - `GET /report` serves the latest CSV report for download.
-  - Uses the demo reference catalog (`data/resistance_genes_reference.csv`) and sample FASTA
-    (`data/sample_sequences.fasta`).
-
-- **Frontend (Next.js + Tailwind + Chart.js)**
-  - Upload form with optional seed for deterministic resistance scores.
-  - Results table showing GC%, predicted species, AMR gene, similarity, and risk per isolate.
-  - GC% bar chart and a download button that fetches the backend report.
-  - Backend URL configurable via `NEXT_PUBLIC_BACKEND_URL`.
-
-- **Dev workflow**
-  - `uvicorn backend.main:app --reload` to run the API.
-  - `npm run dev` inside `frontend/` to launch the UI.
-  - `.venv` virtual environment for Python dependencies; `backend/requirements.txt` lists all
-    packages.
+- **End-to-end demo**: upload a FASTA file, obtain pathogen/AMR insights, download CSV/PDF artefacts.
+- **Modern architecture**: FastAPI + Pandas + Biopython pipeline, Next.js/Tailwind UI, persisted job history.
+- **Reproducible workflow**: Docker Compose stack, GitHub Actions CI, integration tests, load-testing script.
+- **Clear roadmap**: planned integration of real datasets, BLAST/MMseqs2 alignment, QC tooling, and ML-based risk models.
 
 ---
 
-## Usage Snapshot
+## Architecture at a Glance
+
+| Layer              | Role                                                                                      |
+|--------------------|-------------------------------------------------------------------------------------------|
+| **Next.js frontend** | Handles uploads (file/paste), metadata capture, status polling, results visualisation.  |
+| **FastAPI backend**  | Validates inputs, runs the analysis pipeline, persists jobs/reports, serves artefacts.  |
+| **Pipeline modules** | Sequence parsing/QC, species classification via pairwise alignment, AMR matching, risk. |
+| **Persistence**      | SQLite database (PostgreSQL-ready) plus CSV/PDF artefacts under `data/`.                |
+| **Tooling**          | Docker/Docker Compose, GitHub Actions, Locust load script, deployment checklist.        |
+
+---
+
+## Current Capabilities (Demo v1)
+
+- **Pathogen classification** using reference CSVs (`data/pathogen_reference.csv`).
+- **AMR gene detection** against demo catalogues (`data/resistance_genes_reference.csv`).
+- **Sequence QC** (length, GC content, ambiguous bases) with seeded random risk scoring for reproducibility.
+- **Reporting**: CSV summary, optional PDF overview, job history for replays.
+- **API endpoints**: `/analyze/`, `/jobs`, `/jobs/{id}`, and artefact download routes.
+- **Frontend features**: upload form, results table, GC chart, artefact buttons, job history panel.
+
+---
+
+## Demo Usage
+
+### Docker (recommended)
+
+```bash
+docker-compose up --build
+```
+
+- Backend → `http://localhost:8000`
+- Frontend → `http://localhost:3000`
+- Reports persist in the `backend-data` volume.
+
+### Local development
 
 ```bash
 # Backend
 python -m venv .venv
-.venv\Scripts\Activate.ps1
+.venv\Scripts\activate        # Windows
+source .venv/bin/activate      # macOS/Linux
 pip install -r backend/requirements.txt
 uvicorn backend.main:app --reload
 
-# Frontend (in another shell)
+# Frontend (new terminal)
 cd frontend
 npm install
 npm run dev
 ```
 
-Visit `http://localhost:3000`, upload `data/sample_sequences.fasta`, optionally set seed `42`, and
-review the generated results + download link.
+Visit `http://localhost:3000`, upload `data/sample_sequences.fasta`, optionally add notes, and explore the outputs.
+
+### Sample Run
+
+1. Start the stack.
+2. Upload `data/sample_sequences.fasta`.
+3. Inspect results, GC chart, and download artefacts.
+4. Reopen the job from “History” to confirm persistence.
+
+<img width="1920" height="1008" alt="Screenshot 2025-11-02 092001" src="https://github.com/user-attachments/assets/a89055f5-701e-44e9-ba96-578e9af0fac6" />
+
+
+### Load testing (optional)
+
+```bash
+pip install locust
+locust -f tools/loadtest/locustfile.py --host http://127.0.0.1:8000
+```
+
+Navigate to `http://localhost:8089` to simulate concurrent uploads.
 
 ---
 
-## Roadmap (3-Phase Enhancement Sprint)
+## Environment Variables
 
-### Phase 1: Bioinformatics Depth
-- Integrate real pathogen/AMR datasets and aligners (BLAST/MMseqs2).
-- Add QC steps (trimming, contamination checks) and metadata validation.
-- Persist analyses in a relational database; modularise pipeline tasks.
+| Variable                   | Default                     | Purpose                                               |
+|----------------------------|-----------------------------|-------------------------------------------------------|
+| `NEXT_PUBLIC_BACKEND_URL` | `http://127.0.0.1:8000`     | Frontend API base URL.                                |
+| `VETPATHOGEN_DATABASE_URL`| `sqlite:///data/vetpathogen.db` | SQLAlchemy connection string.                         |
+| `VETPATHOGEN_ASYNC`       | `false`                     | Enables async job runner (future queue integration).  |
 
-### Phase 2: Orchestrated Pipeline & Reporting
-- Introduce a job queue (Celery/RQ) with background processing and status endpoints.
-- Produce richer artefacts (polished CSV/PDF, expanded JSON with provenance).
+See `.env.example` for a starter template.
 
-### Phase 3: UX, Deployment, and Polish
-- Real-time UI updates, batch uploads, dashboards, and a download centre.
-- Comprehensive docs/tests, CI/CD, monitoring, and cloud deployment.
-- Buffer time for bug fixes, demo packaging, and sharing a public URL.
+---
+
+## Testing & CI
+
+- Backend tests (pytest) cover API/pipeline smoke flows.
+- Frontend linting (ESLint) ensures TypeScript/React hygiene.
+- Docker image builds validate backend/frontend Dockerfiles.
+- GitHub Actions workflow lives in `.github/workflows/ci.yml`.
+
+---
+
+## Deployment
+
+See [`deployment.md`](deployment.md) for local vs Compose workflows, image publishing, cloud config, HTTPS/logging/monitoring notes, and a launch checklist.
+
+---
+
+## Project Status & Roadmap
+
+VetPathogen v1.0 is a **functional demo** validating architecture and UX. Next milestone (planned during my MSc) focuses on:
+
+1. **Reference upgrades** — integrate curated pathogen/AMR datasets (SILVA/GTDB, CARD/ResFinder) with provenance tracking.
+2. **Pipeline enhancements** — BLAST+/MMseqs2 alignment, fastp QC, async workers, enriched job metadata.
+3. **Risk inference** — replace random labels with rule/ML-driven scoring tied to clinical breakpoints.
+4. **Provenance** — log tool versions, reference IDs, and QC metrics per analysis.
 
 ---
 
 ## Vision
 
-VetPathogen is evolving into a mini-laboratory platform: upload real-world sequences, run
-bioinformatics workflows, monitor progress interactively, and export professional-grade reports.
-The current build proves the integration concept; the roadmap transforms it into a production-ready tool.***
-</details> 
+VetPathogen aims to evolve into a research-grade platform aligned with One Health initiatives:
 
+- Accessible AMR analytics for veterinary labs.
+- Reproducible, containerised workflows deployable in the field.
+- Educational resource bridging veterinary medicine and computational biology.
 
-<details> 
+</details>
+
+---
+
+<details>
   <summary>🇫🇷 Français</summary>
-Prototype intégré regroupant la lecture de FASTA, la classification d’agents pathogènes, la
-détection de gènes AMR et la génération de rapports dans une seule expérience. L’état actuel
-assemble les trois sous-projets (Sequence Analysis Demo, AMR Gene Detection, VetPathogen
-Pipeline) avec un backend FastAPI et une interface Next.js + Tailwind.
+
+Plateforme pour la classification des agents pathogènes vétérinaires et la détection de gènes de résistance à partir de FASTA. Cette version démontre une stack complète (backend FastAPI, pipeline modulaire, tableau de bord Next.js) et prépare la transition vers un outil de recherche.
 
 ---
 
-## Fonctionnalités actuelles
+## Points clés
 
-- **Backend (FastAPI + Pandas + Biopython)**
-  - `POST /analyze/` accepte un fichier FASTA, calcule le GC%, prédit l’espèce, trouve le gène AMR
-    le plus proche, assigne un risque de résistance aléatoire, enregistre `data/report.csv` et
-    renvoie un JSON.
-  - `GET /report` sert le dernier rapport CSV généré.
-  - S’appuie sur le catalogue de référence de démonstration (`data/resistance_genes_reference.csv`)
-    et le FASTA d’exemple (`data/sample_sequences.fasta`).
-
-- **Frontend (Next.js + Tailwind + Chart.js)**
-  - Formulaire d’upload avec graine optionnelle pour rendre les risques reproductibles.
-  - Tableau des résultats : GC%, espèce prédite, gène AMR, similarité et risque pour chaque isolat.
-  - Diagramme en barres du GC% et bouton de téléchargement du rapport.
-  - URL du backend configurable via `NEXT_PUBLIC_BACKEND_URL`.
-
-- **Workflow de développement**
-  - `uvicorn backend.main:app --reload` pour lancer l’API.
-  - `npm run dev` dans `frontend/` pour démarrer l’UI.
-  - Environnement virtuel `.venv` pour les dépendances Python; `backend/requirements.txt` liste les
-    packages requis.
+- **Démo bout en bout** : dépôt FASTA, identification pathogène/AMR, artefacts CSV/PDF.
+- **Architecture moderne** : pipeline Python (FastAPI + Pandas + Biopython), UI Next.js/Tailwind, historique des analyses.
+- **Workflow reproductible** : Docker Compose, CI GitHub Actions, tests d’intégration, script de charge Locust.
+- **Feuille de route claire** : intégration de datasets réels, BLAST/MMseqs2, QC (fastp), modèles de risque.
 
 ---
 
-## Guide rapide
+## Architecture en un coup d’œil
+
+| Couche              | Rôle                                                                                   |
+|---------------------|----------------------------------------------------------------------------------------|
+| **Frontend Next.js** | Upload (fichier/texte), métadonnées, suivi de statut, visualisations.                  |
+| **Backend FastAPI**  | Valide les entrées, exécute le pipeline, stocke jobs/rapports, expose les artefacts.  |
+| **Modules pipeline** | Parsing/QC, classification par alignement pairwise, détection AMR, scoring.            |
+| **Persistance**      | Base SQLite (PostgreSQL-ready) + artefacts CSV/PDF.                                   |
+| **Outils**           | Docker/Docker Compose, GitHub Actions, Locust, guide de déploiement.                   |
+
+---
+
+## Capacités actuelles (Démo v1)
+
+- Classification via `data/pathogen_reference.csv`.
+- Détection AMR via `data/resistance_genes_reference.csv`.
+- QC (longueur, GC, ambiguïtés) avec scoring aléatoire reproductible (graine).
+- Rapports CSV/PDF et historique des analyses.
+- API : `/analyze/`, `/jobs`, `/jobs/{id}`, endpoints de téléchargement.
+- Frontend : formulaire, tableau, graphique GC, boutons de téléchargement, onglet Historique.
+
+---
+
+## Mise en route
+
+### Docker (recommandé)
+
+```bash
+docker-compose up --build
+```
+
+- Backend → `http://localhost:8000`
+- Frontend → `http://localhost:3000`
+
+### Développement local
 
 ```bash
 # Backend
 python -m venv .venv
-.venv\Scripts\Activate.ps1
+.venv\Scripts\activate        # Windows
+source .venv/bin/activate      # macOS/Linux
 pip install -r backend/requirements.txt
 uvicorn backend.main:app --reload
 
-# Frontend (dans un autre terminal)
+# Frontend (autre terminal)
 cd frontend
 npm install
 npm run dev
 ```
 
-Visitez `http://localhost:3000`, chargez `data/sample_sequences.fasta`, fixez la graine à `42` si
-souhaité, et consultez les résultats + le lien de téléchargement.
+Visitez `http://localhost:3000`, chargez `data/sample_sequences.fasta`, ajoutez des notes, puis analysez les résultats et artefacts.
+
+### Démonstration guidée
+
+1. Lancez la stack.
+2. Déposez `data/sample_sequences.fasta`.
+3. Examinez tableau, graphique GC et téléchargements.
+4. Vérifiez l’historique pour confirmer la persistance du job.
+
+<img width="1920" height="1008" alt="Screenshot 2025-11-02 092001" src="https://github.com/user-attachments/assets/863aea6d-6b52-4ff1-8881-6887ba09a188" />
+
+
+### Test de charge (optionnel)
+
+```bash
+pip install locust
+locust -f tools/loadtest/locustfile.py --host http://127.0.0.1:8000
+```
+
+Interface Locust : `http://localhost:8089`.
 
 ---
 
-## Feuille de route (sprint d’amélioration sur 3 phases)
+## Variables d’environnement
 
-### Phase 1 : Approfondir la bio-informatique
-- Intégrer des données réelles de pathogènes/AMR et des outils d’alignement (BLAST/MMseqs2).
-- Ajouter des étapes de QC (trimming, contrôle de contamination) et valider les métadonnées.
-- Stocker les analyses dans une base relationnelle et modulariser les tâches du pipeline.
+| Variable                  | Défaut                       | Description                                           |
+|---------------------------|------------------------------|-------------------------------------------------------|
+| `NEXT_PUBLIC_BACKEND_URL` | `http://127.0.0.1:8000`      | Base API utilisée par le frontend.                    |
+| `VETPATHOGEN_DATABASE_URL`| `sqlite:///data/vetpathogen.db` | URI SQLAlchemy (configurable PostgreSQL).            |
+| `VETPATHOGEN_ASYNC`       | `false`                      | Active l’exécution asynchrone (futur worker).         |
 
-### Phase 2 : Orchestration & Reporting
-- Introduire une file de tâches (Celery/RQ) avec traitement asynchrone et endpoints de statut.
-- Générer des artefacts riches : CSV/PDF soignés, JSON détaillé avec provenance.
+`.env.example` fournit un modèle.
 
-### Phase 3 : UX, déploiement et finition
-- UI temps réel, uploads en lot, tableaux de bord, centre de téléchargement.
-- Documentation/tests exhaustifs, CI/CD, monitoring et déploiement cloud.
-- Temps tampon pour corrections, packaging de démonstration et diffusion d’une URL publique.
+---
+
+## Tests & CI
+
+- Pytest côté backend (pipeline + API).
+- ESLint côté frontend (TypeScript/React).
+- Builds Docker backend/frontend.
+- Workflow GitHub Actions : `.github/workflows/ci.yml`.
+
+---
+
+## Déploiement
+
+Voir [`deployment.md`](deployment.md) pour dev local vs Compose, publication d’images, configuration cloud (PostgreSQL/Redis), HTTPS, logging, monitoring, checklist de lancement.
+
+---
+
+## Statut & Feuille de route
+
+VetPathogen v1.0 est une **démo fonctionnelle**. La suite (prévue durant le Master) porte sur :
+
+1. **Référentiels** — intégration de catalogues pathogènes/AMR (SILVA, CARD) avec provenance.
+2. **Pipeline** — BLAST/MMseqs2, QC fastp, worker asynchrone, métadonnées enrichies.
+3. **Scoring** — risques basés sur règles/seuils et modèles.
+4. **Traçabilité** — journalisation des versions outils/références et métriques QA.
 
 ---
 
 ## Vision
 
-VetPathogen vise à devenir une mini-plateforme de laboratoire : importer des séquences réelles,
-lancer des workflows bio-informatiques, suivre l’avancement en direct et exporter des rapports
-professionnels. Cette version prouve l’intégration; la feuille de route la transforme en outil prêt
-pour la production.***
-</details> 
+VetPathogen ambitionne de devenir une plateforme alignée One Health :
+
+- Analytique AMR accessible aux labos vétérinaires.
+- Workflows reproductibles conteneurisés.
+- Ressource pédagogique liant médecine vétérinaire et bio-informatique.
+
+</details>
