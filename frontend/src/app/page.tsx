@@ -21,6 +21,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabKey>("analysis");
   const [file, setFile] = useState<File | null>(null);
   const [sequenceText, setSequenceText] = useState<string>("");
+  const [metadataSampleId, setMetadataSampleId] = useState<string>("");
   const [metadataNotes, setMetadataNotes] = useState<string>("");
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [reportPath, setReportPath] = useState<string | undefined>();
@@ -54,7 +55,9 @@ export default function Home() {
       const data = await res.json();
       setJobs((data.items as AnalysisJob[]) ?? []);
     } catch (err) {
-      console.error("Failed to fetch jobs", err);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Unable to fetch jobs from backend. Continuing without history.", err);
+      }
     }
   }, [apiUrl]);
 
@@ -130,6 +133,9 @@ export default function Home() {
 
       const formData = new FormData();
       formData.append("fasta", fileToSend);
+      if (metadataSampleId.trim()) {
+        formData.append("sample_id", metadataSampleId.trim());
+      }
       if (metadataNotes.trim()) {
         formData.append("notes", metadataNotes.trim());
       }
@@ -148,17 +154,11 @@ export default function Home() {
       }
 
       const payload = (await response.json()) as AnalysisResponse;
-      const mergedMetadata: AnalysisMetadata = {
-        ...(payload.metadata ?? {}),
-      };
-      if (metadataNotes.trim()) {
-        mergedMetadata.notes = metadataNotes.trim();
-      }
 
       setJobId(payload.job_id ?? null);
       setJobStatus(payload.status ?? null);
       setJobError(payload.error ?? null);
-      setMetadata(mergedMetadata);
+      setMetadata(payload.metadata ?? null);
       setResults(payload.results ?? []);
       setReportPath(payload.report_path);
       setSummaryPath(payload.summary_path);
@@ -291,14 +291,34 @@ export default function Home() {
                 <div className="border-b border-blue-100 px-6 py-4">
                   <h3 className="text-lg font-semibold text-blue-800">Sample Metadata</h3>
                 </div>
-                <div className="px-6 py-5">
-                  <textarea
-                    placeholder="Describe context, collection site, animal species, or notes..."
-                    value={metadataNotes}
-                    onChange={(event) => setMetadataNotes(event.target.value)}
-                    disabled={loading}
-                    className="min-h-[160px] w-full rounded-lg border border-blue-200 bg-white px-3 py-3 text-sm text-blue-900 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-blue-50"
-                  />
+                <div className="space-y-4 px-6 py-5">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-blue-800" htmlFor="sampleId">
+                      Sample ID (optional)
+                    </label>
+                    <input
+                      id="sampleId"
+                      type="text"
+                      placeholder="e.g. S-2025-001"
+                      value={metadataSampleId}
+                      onChange={(event) => setMetadataSampleId(event.target.value)}
+                      disabled={loading}
+                      className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-blue-900 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-blue-50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-blue-800" htmlFor="sampleNotes">
+                      Notes (optional)
+                    </label>
+                    <textarea
+                      id="sampleNotes"
+                      placeholder="Describe context, collection site, animal species, or notes..."
+                      value={metadataNotes}
+                      onChange={(event) => setMetadataNotes(event.target.value)}
+                      disabled={loading}
+                      className="min-h-[120px] w-full rounded-lg border border-blue-200 bg-white px-3 py-3 text-sm text-blue-900 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:bg-blue-50"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -367,8 +387,11 @@ function JobStatusCard({
             </span>
           ) : null}
         </div>
+        {metadata?.sample_id ? (
+          <p className="mt-3 text-xs text-blue-600/90">Sample ID: {metadata.sample_id}</p>
+        ) : null}
         {metadata?.notes ? (
-          <p className="mt-3 text-xs text-blue-600/90">Notes: {metadata.notes}</p>
+          <p className="mt-1 text-xs text-blue-600/90">Notes: {metadata.notes}</p>
         ) : null}
         {error ? (
           <p className="mt-3 text-xs text-red-600">{error}</p>
@@ -411,6 +434,9 @@ function ResultsSummary({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 className="text-xl font-semibold text-blue-800">{speciesName}</h3>
+            {metadata?.sample_id ? (
+              <p className="mt-1 text-xs text-blue-500/80">Sample ID: {metadata.sample_id}</p>
+            ) : null}
             {metadata?.notes ? (
               <p className="mt-1 text-xs text-blue-500/80">Notes: {metadata.notes}</p>
             ) : null}

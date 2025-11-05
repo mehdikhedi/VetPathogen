@@ -6,7 +6,7 @@ import json
 import os
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Generator, Iterable
+from typing import Generator, Iterable, Mapping
 from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, String, Text, create_engine, select
@@ -67,8 +67,19 @@ def get_session() -> Generator[Session, None, None]:
         session.close()
 
 
-def create_job(session: Session, seed: int | None) -> AnalysisJob:
-    job = AnalysisJob(id=str(uuid4()), status="pending", seed=str(seed) if seed is not None else None)
+def _serialise_metadata(metadata: Mapping[str, object] | None) -> str | None:
+    if not metadata:
+        return None
+    return json.dumps(dict(metadata))
+
+
+def create_job(session: Session, seed: int | None, *, metadata: Mapping[str, object] | None = None) -> AnalysisJob:
+    job = AnalysisJob(
+        id=str(uuid4()),
+        status="pending",
+        seed=str(seed) if seed is not None else None,
+        reference_metadata=_serialise_metadata(metadata),
+    )
     session.add(job)
     session.commit()
     session.refresh(job)

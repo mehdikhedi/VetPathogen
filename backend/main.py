@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -63,6 +63,8 @@ def healthcheck() -> dict[str, str]:
 async def analyze_sequences(
     fasta: UploadFile = File(...),
     seed: Annotated[int | None, Query(description="Optional seed for deterministic risk scoring")] = None,
+    sample_id: Annotated[str | None, Form(description="Optional sample identifier")] = None,
+    notes: Annotated[str | None, Form(description="Optional submission notes")] = None,
 ) -> dict[str, object]:
     contents = await fasta.read()
     if not contents:
@@ -81,7 +83,16 @@ async def analyze_sequences(
     if job_runner is None:
         raise HTTPException(status_code=500, detail="Job runner not initialised.")
 
-    job_id, payload = job_runner.enqueue(fasta_text, seed)
+    submission_metadata = {
+        key: value.strip()
+        for key, value in {
+            "sample_id": sample_id if sample_id is not None else None,
+            "notes": notes if notes is not None else None,
+        }.items()
+        if isinstance(value, str) and value.strip()
+    }
+
+    job_id, payload = job_runner.enqueue(fasta_text, seed, metadata=submission_metadata)
     job_info = job_runner.get_job(job_id) or {"status": "unknown"}
 
     response: dict[str, object] = {

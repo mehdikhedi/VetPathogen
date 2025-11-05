@@ -66,6 +66,11 @@ export function JobHistory({ jobs, onRefresh, onSelect, activeJobId }: JobHistor
                     {statusLabel}
                   </span>
                 </div>
+                {job.reference_metadata?.sample_id ? (
+                  <div className="mt-1 text-[11px] text-slate-500">
+                    Sample ID: {String(job.reference_metadata.sample_id)}
+                  </div>
+                ) : null}
                 <div className="mt-1 flex items-center justify-between text-slate-500">
                   <span>{created}</span>
                   {job.pipeline_version ? (
