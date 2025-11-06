@@ -47,6 +47,7 @@ def build_report(
     amr_results: Iterable[dict[str, object]],
     seed: int | None = None,
     pathogen_reference: pd.DataFrame | None = None,
+    submission_metadata: dict[str, object] | None = None,
 ) -> pd.DataFrame:
     """Return a consolidated DataFrame representing the pipeline output."""
 
@@ -54,9 +55,20 @@ def build_report(
     classified_df = classify_dataframe(base_df, reference_df=pathogen_reference)
     with_amr = merge_amr_results(classified_df, amr_results)
     final_df = attach_resistance_risk(with_amr, seed=seed)
+
+    # Attach submission-level metadata as repeated columns for downstream artefacts.
+    metadata = submission_metadata or {}
+    sample_id = str(metadata.get("sample_id") or "")
+    notes = str(metadata.get("notes") or "")
+    final_df = final_df.copy()
+    final_df["sample_id"] = sample_id
+    final_df["notes"] = notes
+
     # Reorder columns for readability
     columns = [
         "id",
+        "sample_id",
+        "notes",
         "sequence",
         "length",
         "ambiguous",

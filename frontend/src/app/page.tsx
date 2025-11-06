@@ -35,6 +35,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
 
   const baseUrl = useMemo(() => {
     const raw = process.env.NEXT_PUBLIC_BACKEND_URL ?? DEFAULT_ENDPOINT;
@@ -114,6 +115,33 @@ export default function Home() {
     reader.readAsText(selected);
   }, []);
 
+  const handleDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsDragActive(false);
+      const droppedFile = event.dataTransfer.files?.[0] ?? null;
+      handleFileChange(droppedFile);
+    },
+    [handleFileChange]
+  );
+
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!isDragActive) {
+      setIsDragActive(true);
+    }
+  }, [isDragActive]);
+
+  const handleDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (isDragActive) {
+      setIsDragActive(false);
+    }
+  }, [isDragActive]);
+
   const handleAnalyze = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -180,7 +208,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [apiUrl, fetchJobs, file, metadataNotes, sequenceText]);
+  }, [apiUrl, fetchJobs, file, metadataNotes, metadataSampleId, sequenceText]);
 
   const csvUrl = useMemo(() => {
     if (!reportPath) return undefined;
@@ -249,6 +277,16 @@ export default function Home() {
           <p className="mt-1 text-sm text-blue-600 md:text-base">
             Upload your sequence and explore antimicrobial resistance patterns
           </p>
+          <p className="mt-3 text-xs text-blue-500 md:text-sm">
+            <a
+              href="/sample_sequences.fasta"
+              download
+              className="font-semibold text-blue-700 underline underline-offset-4 hover:text-blue-800"
+            >
+              Download our demo FASTA
+            </a>{" "}
+            and drop it into the uploader to try the pipeline instantly.
+          </p>
         </section>
 
         {activeTab === "history" ? (
@@ -264,7 +302,12 @@ export default function Home() {
                 <div className="border-b border-blue-100 px-6 py-4">
                   <h3 className="text-lg font-semibold text-blue-800">Upload Sequence</h3>
                 </div>
-                <div className="space-y-4 px-6 py-5">
+                <div
+                  className={`space-y-4 px-6 py-5 transition ${isDragActive ? "border-2 border-dashed border-blue-400 bg-blue-50/60" : ""}`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
                   <input
                     type="file"
                     accept=".fasta,.fa,.txt"

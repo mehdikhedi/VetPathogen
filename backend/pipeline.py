@@ -31,6 +31,7 @@ def run_pipeline(
     pathogen_reference_df: pd.DataFrame,
     output_dir: Path,
     job_id: str,
+    submission_metadata: Optional[dict[str, object]] = None,
 ) -> tuple[pd.DataFrame, Path, Optional[Path], Optional[Path], dict[str, object]]:
     """Execute the VetPathogen pipeline and persist job-specific artefacts."""
 
@@ -44,6 +45,7 @@ def run_pipeline(
         amr_results=amr_matches,
         seed=seed,
         pathogen_reference=pathogen_reference_df,
+        submission_metadata=submission_metadata,
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -52,7 +54,7 @@ def run_pipeline(
     latest_report_path = output_dir / "report.csv"
     save_report(report_df, latest_report_path)
 
-    summary = build_summary(report_df)
+    summary = build_summary(report_df, submission_metadata=submission_metadata)
     summary_path: Optional[Path] = None
     if summary["sequence_count"]:
         summary_path = output_dir / f"summary_{job_id}.csv"
@@ -64,6 +66,8 @@ def run_pipeline(
         "pathogen_reference": str(pathogen_reference_df.shape[0]) + " species",
     }
     metadata["pipeline_version"] = PIPELINE_VERSION
+    if submission_metadata:
+        metadata.update(submission_metadata)
 
     pdf_path: Optional[Path] = None
     try:

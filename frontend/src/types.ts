@@ -1,5 +1,6 @@
-﻿export type AnalysisResult = {
+export type AnalysisResult = {
   id: string;
+  sample_id: string;
   sequence: string;
   length: number;
   ambiguous: number;
@@ -15,6 +16,7 @@
   amr_score: number;
   similarity: number;
   resistance_risk: string;
+  notes: string;
 };
 
 export type AnalysisMetadata = {

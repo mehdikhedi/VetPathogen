@@ -120,6 +120,7 @@ class JobRunner:
                 pathogen_reference_df=self.pathogen_reference_df,
                 output_dir=self.output_dir,
                 job_id=job_id,
+                submission_metadata=extra_metadata,
             )
             combined_metadata = dict(pipeline_metadata or {})
             combined_metadata.update(extra_metadata)

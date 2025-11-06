@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Optional
 
 import pandas as pd
 from reportlab.lib import colors
@@ -16,26 +16,41 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 PIPELINE_VERSION = "0.4.0"
 
 
-def build_summary(report_df: pd.DataFrame) -> dict[str, object]:
+def build_summary(
+    report_df: pd.DataFrame,
+    *,
+    submission_metadata: Optional[dict[str, object]] = None,
+) -> dict[str, object]:
     species_counts = Counter(report_df.get("predicted_species", [])).most_common()
     amr_counts = Counter(report_df.get("amr_gene", [])).most_common()
-    return {
+    summary: dict[str, object] = {
         "sequence_count": int(len(report_df)),
         "species_counts": species_counts,
         "amr_counts": amr_counts,
     }
+    submission_metadata = submission_metadata or {}
+    summary["sample_id"] = submission_metadata.get("sample_id") or ""
+    summary["notes"] = submission_metadata.get("notes") or ""
+    return summary
 
 
 def save_summary_csv(summary: dict[str, object], output_path: Path) -> Path:
     rows = []
+    sample_id = summary.get("sample_id") or ""
+    notes = summary.get("notes") or ""
     for label, counts in ("species", summary.get("species_counts", [])), ("amr_gene", summary.get("amr_counts", [])):
         for name, count in counts:
-            rows.append({"category": label, "name": name, "count": count})
-    if rows:
-        df = pd.DataFrame(rows)
-        df.to_csv(output_path, index=False)
-    else:
-        output_path.write_text("category,name,count\n")
+            rows.append(
+                {
+                    "category": label,
+                    "name": name,
+                    "count": count,
+                    "sample_id": sample_id,
+                    "notes": notes,
+                }
+            )
+    df = pd.DataFrame(rows, columns=["category", "name", "count", "sample_id", "notes"])
+    df.to_csv(output_path, index=False)
     return output_path
 
 
@@ -57,6 +72,16 @@ def build_pdf_report(
         f"Generated: {datetime.utcnow().isoformat()} UTC",
         f"Pipeline Version: {reference_metadata.get('pipeline_version', PIPELINE_VERSION)}",
     ]
+    sample_id = summary.get("sample_id") or (
+        reference_metadata.get("sample_id") if reference_metadata else ""
+    )
+    notes = summary.get("notes") or (
+        reference_metadata.get("notes") if reference_metadata else ""
+    )
+    if sample_id:
+        meta_lines.append(f"Sample ID: {sample_id}")
+    if notes:
+        meta_lines.append(f"Notes: {notes}")
     ref_info = reference_metadata.get("references", {}) if reference_metadata else {}
     if ref_info:
         meta_lines.append("References: " + ", ".join(f"{k}: {v}" for k, v in ref_info.items()))
@@ -67,13 +92,17 @@ def build_pdf_report(
 
     elements.append(Paragraph("Summary", styles["Heading2"]))
     elements.append(Paragraph(f"Sequences analysed: {summary.get('sequence_count', 0)}", styles["Normal"]))
+    if sample_id:
+        elements.append(Paragraph(f"Sample ID: {sample_id}", styles["Normal"]))
+    if notes:
+        elements.append(Paragraph(f"Notes: {notes}", styles["Normal"]))
     elements.append(Spacer(1, 12))
 
     if report_df.empty:
         elements.append(Paragraph("No sequences were processed.", styles["Normal"]))
     else:
         table_data = [[
-            "Sample ID",
+            "Sequence ID",
             "Predicted Species",
             "Species Identity %",
             "AMR Gene",
