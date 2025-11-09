@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 
@@ -15,10 +16,79 @@ import type {
 
 const DEFAULT_ENDPOINT = "http://127.0.0.1:8000";
 
+const UI_TEXT = {
+  en: {
+    navAnalysis: "Analysis",
+    navHistory: "History",
+    heroTitle: "Veterinary Pathogen Analysis & AMR Insights",
+    heroSubtitle: "Upload your sequence and explore antimicrobial resistance patterns",
+    heroLink: "Download our demo FASTA",
+    heroHelperSuffix: "and drop it into the uploader to try the pipeline instantly.",
+    heroHistoryTitle: "Review past analyses",
+    heroHistorySubtitle: "Reload completed jobs to inspect results, download reports, or resume work.",
+    uploadTitle: "Upload Sequence",
+    uploadPlaceholder: "Or paste your sequence here...",
+    uploadFormat: "FASTA / Text format",
+    metadataTitle: "Sample Metadata",
+    metadataSampleId: "Sample ID (optional)",
+    metadataSamplePlaceholder: "e.g. S-2025-001",
+    metadataNotes: "Notes (optional)",
+    metadataNotesPlaceholder: "Describe context, collection site, animal species, or notes...",
+    analyzeButton: "Analyze Sequence",
+    analyzingButton: "Analyzing sequence...",
+    jobStatusLabel: "Status",
+    waitingMessage: "Results will appear automatically once processing completes.",
+    resultsHeading: "Resistance Genes",
+    sequenceCount: "Sequences analysed",
+    sampleLabel: "Sample",
+    riskLabel: "Risk",
+    reportHeading: "Analysis Artefacts",
+    reportDescription:
+      "Download detailed CSV tables, summary metrics, and a PDF overview generated for this job.",
+    downloadCsv: "Download CSV",
+    downloadSummary: "Summary CSV",
+    downloadPdf: "PDF Report",
+  },
+  fr: {
+    navAnalysis: "Analyse",
+    navHistory: "Historique",
+    heroTitle: "Analyse des pathogènes vétérinaires & informations AMR",
+    heroSubtitle: "Téléchargez votre séquence et explorez les profils de résistance antimicrobienne",
+    heroLink: "Téléchargez notre FASTA de démonstration",
+    heroHelperSuffix: "et déposez-le pour tester immédiatement la chaîne d’analyse.",
+    heroHistoryTitle: "Consulter les analyses passées",
+    heroHistorySubtitle:
+      "Rechargez les jobs terminés pour examiner les résultats, télécharger les rapports ou poursuivre le travail.",
+    uploadTitle: "Importer une séquence",
+    uploadPlaceholder: "Ou collez votre séquence ici...",
+    uploadFormat: "Format FASTA / texte",
+    metadataTitle: "Métadonnées de l'échantillon",
+    metadataSampleId: "Identifiant de l'échantillon (optionnel)",
+    metadataSamplePlaceholder: "ex. S-2025-001",
+    metadataNotes: "Notes (optionnel)",
+    metadataNotesPlaceholder: "Décrivez le contexte, le site de prélèvement, l'espèce animale...",
+    analyzeButton: "Analyser la séquence",
+    analyzingButton: "Analyse en cours...",
+    jobStatusLabel: "Statut",
+    waitingMessage: "Les résultats apparaîtront automatiquement une fois l’analyse terminée.",
+    resultsHeading: "Gènes de résistance",
+    sequenceCount: "Séquences analysées",
+    sampleLabel: "Échantillon",
+    riskLabel: "Risque",
+    reportHeading: "Artefacts d’analyse",
+    reportDescription:
+      "Téléchargez les tableaux CSV détaillés, les métriques de synthèse et un PDF généré pour ce job.",
+    downloadCsv: "Télécharger le CSV",
+    downloadSummary: "CSV de synthèse",
+    downloadPdf: "Rapport PDF",
+  },
+} as const;
+
 type TabKey = "analysis" | "history";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabKey>("analysis");
+  const [lang, setLang] = useState<"en" | "fr">("en");
   const [file, setFile] = useState<File | null>(null);
   const [sequenceText, setSequenceText] = useState<string>("");
   const [metadataSampleId, setMetadataSampleId] = useState<string>("");
@@ -239,8 +309,11 @@ export default function Home() {
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center gap-10 px-6 py-10">
         <header className="w-full max-w-5xl border-b border-blue-100 pb-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-2xl font-bold tracking-tight text-blue-800">VetPathogen</h1>
-            <nav className="flex space-x-2">
+            <div className="flex items-center gap-3">
+              <Image src="/vetpathogen-logo.svg" alt="VetPathogen logo" width={48} height={48} priority />
+              <h1 className="text-2xl font-bold tracking-tight text-blue-800">VetPathogen</h1>
+            </div>
+            <nav className="flex items-center space-x-2">
               <button
                 onClick={() => setActiveTab("analysis")}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition ${
@@ -250,7 +323,7 @@ export default function Home() {
                 }`}
                 disabled={activeTab === "analysis"}
               >
-                Analysis
+                {UI_TEXT[lang].navAnalysis}
               </button>
               <button
                 onClick={() => {
@@ -264,7 +337,27 @@ export default function Home() {
                 }`}
                 disabled={activeTab === "history" && loading}
               >
-                History
+                {UI_TEXT[lang].navHistory}
+              </button>
+              <button
+                onClick={() => setLang((prev) => (prev === "en" ? "fr" : "en"))}
+                className="inline-flex items-center gap-2 rounded-full border border-blue-500 bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/40 transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-300"
+              >
+                {lang === "en" ? (
+                  <>
+                    <span role="img" aria-label="French flag">
+                      🇫🇷
+                    </span>
+                    Français
+                  </>
+                ) : (
+                  <>
+                    <span role="img" aria-label="English flag">
+                      🇬🇧
+                    </span>
+                    English
+                  </>
+                )}
               </button>
             </nav>
           </div>
@@ -272,27 +365,35 @@ export default function Home() {
 
         <section className="text-center">
           <h2 className="text-xl font-medium text-blue-900 md:text-2xl">
-            Veterinary Pathogen Analysis &amp; AMR Insights
+            {activeTab === "analysis" ? UI_TEXT[lang].heroTitle : UI_TEXT[lang].heroHistoryTitle}
           </h2>
           <p className="mt-1 text-sm text-blue-600 md:text-base">
-            Upload your sequence and explore antimicrobial resistance patterns
+            {activeTab === "analysis" ? UI_TEXT[lang].heroSubtitle : UI_TEXT[lang].heroHistorySubtitle}
           </p>
-          <p className="mt-3 text-xs text-blue-500 md:text-sm">
-            <a
-              href="/sample_sequences.fasta"
-              download
-              className="font-semibold text-blue-700 underline underline-offset-4 hover:text-blue-800"
-            >
-              Download our demo FASTA
-            </a>{" "}
-            and drop it into the uploader to try the pipeline instantly.
-          </p>
+          {activeTab === "analysis" ? (
+            <p className="mt-3 text-xs text-blue-500 md:text-sm">
+              <a
+                href="/sample_sequences.fasta"
+                download
+                className="font-semibold text-blue-700 underline underline-offset-4 hover:text-blue-800"
+              >
+                {UI_TEXT[lang].heroLink}
+              </a>{" "}
+              {UI_TEXT[lang].heroHelperSuffix}
+            </p>
+          ) : null}
         </section>
 
         {activeTab === "history" ? (
           <div className="w-full max-w-5xl">
             <div className="rounded-2xl border border-blue-100 bg-white/90 p-6 shadow-md">
-              <JobHistory jobs={jobs} onRefresh={fetchJobs} onSelect={loadJob} activeJobId={jobId} />
+              <JobHistory
+                jobs={jobs}
+                onRefresh={fetchJobs}
+                onSelect={loadJob}
+                activeJobId={jobId}
+                lang={lang}
+              />
             </div>
           </div>
         ) : (
@@ -300,7 +401,9 @@ export default function Home() {
             <div className="grid w-full max-w-5xl gap-8 md:grid-cols-2">
               <div className="rounded-2xl border border-blue-100 bg-white/90 shadow-md">
                 <div className="border-b border-blue-100 px-6 py-4">
-                  <h3 className="text-lg font-semibold text-blue-800">Upload Sequence</h3>
+                  <h3 className="text-lg font-semibold text-blue-800">
+                    {UI_TEXT[lang].uploadTitle}
+                  </h3>
                 </div>
                 <div
                   className={`space-y-4 px-6 py-5 transition ${isDragActive ? "border-2 border-dashed border-blue-400 bg-blue-50/60" : ""}`}
@@ -317,14 +420,14 @@ export default function Home() {
                   />
                   <div className="relative">
                     <textarea
-                      placeholder="Or paste your sequence here..."
+                      placeholder={UI_TEXT[lang].uploadPlaceholder}
                       value={sequenceText}
                       onChange={(event) => setSequenceText(event.target.value)}
                       disabled={loading}
                       className="min-h-[160px] w-full rounded-lg border border-blue-200 bg-white px-3 py-3 text-sm text-blue-900 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-blue-50"
                     />
                     <div className="pointer-events-none absolute top-2 right-3 text-xs italic text-blue-300">
-                      FASTA / Text format
+                      {UI_TEXT[lang].uploadFormat}
                     </div>
                   </div>
                 </div>
@@ -332,17 +435,19 @@ export default function Home() {
 
               <div className="rounded-2xl border border-blue-100 bg-white/90 shadow-md">
                 <div className="border-b border-blue-100 px-6 py-4">
-                  <h3 className="text-lg font-semibold text-blue-800">Sample Metadata</h3>
+                  <h3 className="text-lg font-semibold text-blue-800">
+                    {UI_TEXT[lang].metadataTitle}
+                  </h3>
                 </div>
                 <div className="space-y-4 px-6 py-5">
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-blue-800" htmlFor="sampleId">
-                      Sample ID (optional)
+                      {UI_TEXT[lang].metadataSampleId}
                     </label>
                     <input
                       id="sampleId"
                       type="text"
-                      placeholder="e.g. S-2025-001"
+                      placeholder={UI_TEXT[lang].metadataSamplePlaceholder}
                       value={metadataSampleId}
                       onChange={(event) => setMetadataSampleId(event.target.value)}
                       disabled={loading}
@@ -351,11 +456,13 @@ export default function Home() {
                   </div>
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-blue-800" htmlFor="sampleNotes">
-                      Notes (optional)
+                      {lang === "en" ? "Notes (optional)" : "Notes (optionnel)"}
                     </label>
                     <textarea
                       id="sampleNotes"
-                      placeholder="Describe context, collection site, animal species, or notes..."
+                      placeholder={
+                        UI_TEXT[lang].metadataNotesPlaceholder
+                      }
                       value={metadataNotes}
                       onChange={(event) => setMetadataNotes(event.target.value)}
                       disabled={loading}
@@ -373,7 +480,7 @@ export default function Home() {
                   disabled={loading}
                   className="rounded-xl bg-blue-700 px-8 py-4 text-base font-semibold text-white shadow-lg transition hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {loading ? "Analyzing sequence..." : "Analyze Sequence"}
+                  {loading ? UI_TEXT[lang].analyzingButton : UI_TEXT[lang].analyzeButton}
                 </button>
               </div>
             </div>
@@ -384,22 +491,35 @@ export default function Home() {
               </div>
             ) : null}
 
-            <JobStatusCard jobId={jobId} status={jobStatus} error={jobError} metadata={metadata} />
+            <JobStatusCard jobId={jobId} status={jobStatus} error={jobError} metadata={metadata} lang={lang} />
 
             <section ref={resultsRef} className="w-full max-w-5xl space-y-6">
-              <ResultsSummary results={results} metadata={metadata} />
-              <ResultsTable results={results} />
-              <GCPlot results={results} />
+              <ResultsSummary results={results} metadata={metadata} lang={lang} />
+              <ResultsTable results={results} lang={lang} />
+              <GCPlot results={results} lang={lang} />
               <ReportDownloadCard
                 csvUrl={csvUrl}
                 summaryUrl={summaryUrl}
                 pdfUrl={pdfUrl}
                 hasResults={results.length > 0}
+                lang={lang}
               />
             </section>
           </>
         )}
       </div>
+      <footer className="mt-10 w-full border-t border-blue-100 bg-white/80 px-6 py-4 text-center text-sm text-blue-700">
+        <p>
+          Built by Mehdi Khedi ·{" "}
+          <a href="https://mehdikhedi.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-800 underline underline-offset-4">
+            mehdikhedi.com
+          </a>{" "}
+          ·{" "}
+          <a href="mailto:hello@mehdikhedi.com" className="font-semibold text-blue-800 underline underline-offset-4">
+            hello@mehdikhedi.com
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }
@@ -409,20 +529,31 @@ function JobStatusCard({
   status,
   error,
   metadata,
+  lang,
 }: {
   jobId: string | null;
   status: string | null;
   error: string | null;
   metadata: AnalysisMetadata | null;
+  lang: "en" | "fr";
 }) {
   if (!jobId) return null;
+  const isFrench = lang === "fr";
+  const statusLabel = status ?? (isFrench ? "inconnu" : "unknown");
+  const waitingMessage = isFrench
+    ? "Les résultats apparaîtront automatiquement une fois l’analyse terminée."
+    : "Results will appear automatically once processing completes.";
   return (
     <section className="w-full max-w-5xl">
       <div className="rounded-2xl border border-blue-100 bg-white/90 p-6 text-sm text-blue-900 shadow-md">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-base font-semibold text-blue-800">Job ID: {jobId}</p>
-            <p className="text-xs text-blue-500">Status: {status ?? "unknown"}</p>
+            <p className="text-base font-semibold text-blue-800">
+              {isFrench ? "ID du job" : "Job ID"}: {jobId}
+            </p>
+            <p className="text-xs text-blue-500">
+              {isFrench ? "Statut" : "Status"}: {statusLabel}
+            </p>
           </div>
           {metadata?.pipeline_version ? (
             <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600">
@@ -431,17 +562,21 @@ function JobStatusCard({
           ) : null}
         </div>
         {metadata?.sample_id ? (
-          <p className="mt-3 text-xs text-blue-600/90">Sample ID: {metadata.sample_id}</p>
+          <p className="mt-3 text-xs text-blue-600/90">
+            {isFrench ? "ID échantillon" : "Sample ID"}: {metadata.sample_id}
+          </p>
         ) : null}
         {metadata?.notes ? (
-          <p className="mt-1 text-xs text-blue-600/90">Notes: {metadata.notes}</p>
+          <p className="mt-1 text-xs text-blue-600/90">
+            {isFrench ? "Notes" : "Notes"}: {metadata.notes}
+          </p>
         ) : null}
         {error ? (
-          <p className="mt-3 text-xs text-red-600">{error}</p>
-        ) : status !== "completed" ? (
-          <p className="mt-3 text-xs text-blue-500">
-            Results will appear automatically once processing completes.
+          <p className="mt-3 text-xs text-red-600">
+            {isFrench ? "Erreur :" : "Error:"} {error}
           </p>
+        ) : status !== "completed" ? (
+          <p className="mt-3 text-xs text-blue-500">{waitingMessage}</p>
         ) : null}
       </div>
     </section>
@@ -451,9 +586,11 @@ function JobStatusCard({
 function ResultsSummary({
   results,
   metadata,
+  lang,
 }: {
   results: AnalysisResult[];
   metadata: AnalysisMetadata | null;
+  lang: "en" | "fr";
 }) {
   if (!results.length) return null;
 
@@ -470,6 +607,9 @@ function ResultsSummary({
     const amrIdentity = result.amr_identity ?? similarity;
     return Math.max(similarity, amrIdentity) >= 90;
   });
+  const isFrench = lang === "fr";
+  const identityLabel = isFrench ? "Identité" : "Identity";
+  const coverageLabel = isFrench ? "Couverture" : "Coverage";
 
   return (
     <section className="rounded-2xl border border-blue-100 bg-white/90 p-6 text-blue-900 shadow-md">
@@ -478,34 +618,51 @@ function ResultsSummary({
           <div>
             <h3 className="text-xl font-semibold text-blue-800">{speciesName}</h3>
             {metadata?.sample_id ? (
-              <p className="mt-1 text-xs text-blue-500/80">Sample ID: {metadata.sample_id}</p>
+              <p className="mt-1 text-xs text-blue-500/80">
+                {isFrench ? "ID échantillon" : "Sample ID"}: {metadata.sample_id}
+              </p>
             ) : null}
             {metadata?.notes ? (
-              <p className="mt-1 text-xs text-blue-500/80">Notes: {metadata.notes}</p>
+              <p className="mt-1 text-xs text-blue-500/80">
+                {isFrench ? "Notes" : "Notes"}: {metadata.notes}
+              </p>
             ) : null}
           </div>
           {identity !== null ? (
             <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
-              Identity {identity.toFixed(2)}%
+              {identityLabel} {identity.toFixed(2)}%
             </span>
           ) : null}
         </div>
 
         {highRisk ? (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
-            High-confidence resistance markers detected across multiple genes. Immediate follow-up
-            recommended.
+            {isFrench
+              ? "Marqueurs de résistance détectés avec forte confiance sur plusieurs gènes. Un suivi rapide est recommandé."
+              : "High-confidence resistance markers detected across multiple genes. Immediate follow-up recommended."}
           </div>
         ) : null}
 
         <div className="grid gap-3 text-xs text-blue-600 md:grid-cols-3">
-          {gcContent !== null ? <span>GC content: {gcContent.toFixed(2)}%</span> : null}
-          {coverage !== null ? <span>Coverage: {coverage.toFixed(2)}%</span> : null}
-          <span>Sequences analysed: {results.length}</span>
+          {gcContent !== null ? (
+            <span>
+              {isFrench ? "Contenu GC" : "GC content"}: {gcContent.toFixed(2)}%
+            </span>
+          ) : null}
+          {coverage !== null ? (
+            <span>
+              {coverageLabel}: {coverage.toFixed(2)}%
+            </span>
+          ) : null}
+          <span>
+            {isFrench ? "Séquences analysées" : "Sequences analysed"}: {results.length}
+          </span>
         </div>
 
         <div>
-          <h4 className="text-sm font-semibold text-blue-800">Resistance Genes</h4>
+          <h4 className="text-sm font-semibold text-blue-800">
+            {isFrench ? "Gènes de résistance" : "Resistance Genes"}
+          </h4>
           <ul className="mt-2 grid gap-2 text-xs text-blue-600 md:grid-cols-2">
             {results.map((result) => (
               <li
@@ -517,7 +674,8 @@ function ResultsSummary({
                   <span>{(result.amr_identity ?? result.similarity ?? 0).toFixed(1)}%</span>
                 </div>
                 <p className="text-[11px] text-blue-500">
-                  Sample: {result.id.replace(/_/g, " ")} • Risk: {result.resistance_risk}
+                  {isFrench ? "Échantillon" : "Sample"}: {result.id.replace(/_/g, " ")} •{" "}
+                  {isFrench ? "Risque" : "Risk"}: {result.resistance_risk}
                 </p>
               </li>
             ))}
@@ -533,22 +691,23 @@ function ReportDownloadCard({
   summaryUrl,
   pdfUrl,
   hasResults,
+  lang,
 }: {
   csvUrl?: string;
   summaryUrl?: string;
   pdfUrl?: string;
   hasResults: boolean;
+  lang: "en" | "fr";
 }) {
   if (!hasResults) return null;
+  const text = UI_TEXT[lang];
 
   return (
     <section className="rounded-2xl border border-blue-100 bg-white/90 p-6 text-sm text-blue-900 shadow-md">
       <div className="flex flex-col gap-4">
         <div>
-          <p className="font-semibold text-blue-800">Analysis Artefacts</p>
-          <p className="text-xs text-blue-500">
-            Download detailed CSV tables, summary metrics, and a PDF overview generated for this job.
-          </p>
+          <p className="font-semibold text-blue-800">{text.reportHeading}</p>
+          <p className="text-xs text-blue-500">{text.reportDescription}</p>
         </div>
         <div className="flex flex-wrap gap-3">
           {csvUrl ? (
@@ -558,7 +717,7 @@ function ReportDownloadCard({
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800"
             >
-              Download CSV
+              {text.downloadCsv}
             </a>
           ) : null}
           {summaryUrl ? (
@@ -568,7 +727,7 @@ function ReportDownloadCard({
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center rounded-md border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
             >
-              Summary CSV
+              {text.downloadSummary}
             </a>
           ) : null}
           {pdfUrl ? (
@@ -578,7 +737,7 @@ function ReportDownloadCard({
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center rounded-md border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
             >
-              PDF Report
+              {text.downloadPdf}
             </a>
           ) : null}
         </div>

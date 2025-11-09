@@ -16,18 +16,33 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 type GCPlotProps = {
   results: AnalysisResult[];
+  lang?: "en" | "fr";
 };
 
-export function GCPlot({ results }: GCPlotProps) {
+const GC_LABELS = {
+  en: {
+    heading: "GC Content Overview",
+    dataset: "GC Content (%)",
+    axis: "GC %",
+  },
+  fr: {
+    heading: "Aperçu du contenu GC",
+    dataset: "Contenu GC (%)",
+    axis: "% de GC",
+  },
+} as const;
+
+export function GCPlot({ results, lang = "en" }: GCPlotProps) {
   if (!results.length) {
     return null;
   }
+  const labels = GC_LABELS[lang];
 
   const data = {
     labels: results.map((result) => result.id),
     datasets: [
       {
-        label: "GC Content (%)",
+        label: labels.dataset,
         data: results.map((result) => result.gc_content),
         backgroundColor: "rgba(79, 70, 229, 0.6)",
       },
@@ -41,10 +56,7 @@ export function GCPlot({ results }: GCPlotProps) {
         display: true,
         position: "top" as const,
       },
-      title: {
-        display: true,
-        text: "GC Content by Sample",
-      },
+      title: undefined,
     },
     scales: {
       y: {
@@ -52,7 +64,7 @@ export function GCPlot({ results }: GCPlotProps) {
         suggestedMax: 100,
         title: {
           display: true,
-          text: "GC %",
+          text: labels.axis,
         },
       },
     },
@@ -60,7 +72,7 @@ export function GCPlot({ results }: GCPlotProps) {
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-semibold text-slate-800">GC Content Overview</h2>
+      <h2 className="text-xl font-semibold text-slate-800">{labels.heading}</h2>
       <div className="mt-4">
         <Bar data={data} options={options} />
       </div>
