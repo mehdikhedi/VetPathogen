@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import type { JSX } from "react";
 
 const VIDEO_SRC_EN = process.env.NEXT_PUBLIC_LANDING_VIDEO_URL ?? "/landing-demo.mp4";
 const VIDEO_SRC_FR = process.env.NEXT_PUBLIC_LANDING_VIDEO_URL_FR ?? "/landing-demo-fr.mp4";
