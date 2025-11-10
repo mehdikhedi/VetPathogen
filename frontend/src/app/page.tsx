@@ -152,7 +152,7 @@ export default function LandingPage(): JSX.Element {
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center md:justify-start">
                 <Link
-                  href="/"
+                  href="/demo"
                   className="rounded-xl bg-blue-700 px-6 py-3 text-lg font-semibold text-white shadow-lg shadow-blue-500/40 transition hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                 >
                   {translations[lang].heroPrimaryCta}
